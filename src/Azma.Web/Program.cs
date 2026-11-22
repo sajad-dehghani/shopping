@@ -109,7 +109,22 @@ var app = builder.Build();
 // ---------- Database migration + seed ----------
 using (var scope = app.Services.CreateScope())
 {
-    await scope.ServiceProvider.GetRequiredService<DbSeeder>().SeedAsync();
+    var seeder = scope.ServiceProvider.GetRequiredService<DbSeeder>();
+    await seeder.SeedAsync();
+
+    // Admin recovery command: dotnet Azma.Web.dll admin <email> <password>
+    // Creates the admin, or resets the password / unlocks an existing one, then exits.
+    if (args.Length > 0 && args[0].Equals("admin", StringComparison.OrdinalIgnoreCase))
+    {
+        if (args.Length < 3)
+        {
+            Console.Error.WriteLine("Usage: dotnet Azma.Web.dll admin <email> <password>");
+            return 1;
+        }
+        var error = await seeder.EnsureAdminAsync(args[1], args[2], resetPassword: true);
+        Console.WriteLine(error is null ? $"Admin '{args[1]}' is ready. You can now log in at /Account/Login." : $"Failed: {error}");
+        return error is null ? 0 : 1;
+    }
 }
 
 app.UseForwardedHeaders();
@@ -150,6 +165,7 @@ app.MapPaymentEndpoints();
 app.MapAdminExportEndpoints();
 app.MapHealthChecks("/health");
 
-app.Run();
+await app.RunAsync();
+return 0;
 
 public partial class Program;

@@ -53,17 +53,7 @@ git clone https://github.com/sajad-dehghani/shopping.git
 cd shopping/src/Azma.Web
 ```
 
-حساب مدیر اول را با user-secrets تعریف کنید (در سورس کد ذخیره نمی‌شود):
-
-```bash
-dotnet user-secrets set "AdminSeed:Email" "admin@example.com"
-```
-
-```bash
-dotnet user-secrets set "AdminSeed:Password" "YourStrong@Pass1"
-```
-
-اگر از LocalDB استفاده نمی‌کنید، رشته اتصال را هم تنظیم کنید:
+اگر از LocalDB استفاده نمی‌کنید، رشته اتصال را تنظیم کنید:
 
 ```bash
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost,1433;Database=AzmaDb;User Id=sa;Password=...;TrustServerCertificate=True"
@@ -73,7 +63,30 @@ dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost,
 dotnet run
 ```
 
-در اولین اجرا دیتابیس ساخته می‌شود (Migration خودکار)، نقش و کاربر مدیر ایجاد می‌شود و در محیط Development **داده‌های نمونه** (دوره، محصول، مدرس، پرسش متداول) هم اضافه می‌شوند.
+در اولین اجرا دیتابیس ساخته می‌شود (Migration خودکار) و در محیط Development **داده‌های نمونه** (دوره، محصول، مدرس، پرسش متداول) هم اضافه می‌شوند.
+
+### ورود به پنل مدیریت
+
+در محیط Development، اگر هنوز هیچ مدیری وجود نداشته باشد، این حساب به صورت خودکار ساخته می‌شود:
+
+- ایمیل: `admin@example.com`
+- رمز عبور: `Admin@12345`
+
+بعد از اولین ورود، رمز را از «تغییر رمز» در بالای پنل عوض کنید.
+
+**ساخت مدیر یا بازنشانی رمز** (در هر محیطی، از جمله سرور): این دستور حساب را می‌سازد، یا اگر وجود داشته باشد رمزش را عوض و قفلش را باز می‌کند.
+
+```bash
+dotnet run -- admin you@example.com "YourStrong@Pass1"
+```
+
+روی سرور، در پوشه انتشار:
+
+```bash
+dotnet Azma.Web.dll admin you@example.com "YourStrong@Pass1"
+```
+
+رمز عبور باید حداقل ۸ کاراکتر و شامل عدد، حرف بزرگ و حرف کوچک انگلیسی باشد. برای ورود، **ایمیل** را در فیلد ایمیل وارد کنید. بعد از ۵ تلاش ناموفق، حساب ۱۵ دقیقه قفل می‌شود؛ دستور بالا قفل را هم باز می‌کند.
 
 - سایت: `https://localhost:7057`
 - پنل مدیریت: `https://localhost:7057/admin`
