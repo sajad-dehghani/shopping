@@ -1,0 +1,28 @@
+<article class="item-card">
+    <a class="thumb" href="/courses/@Course.Slug" tabindex="-1">
+        <Thumb Src="@Course.CoverImagePath" Alt="@Course.Title" Icon="bi-journal-bookmark" Width="640" Height="400" />
+        <span class="badge-corner">
+            <RegistrationStateChip State="Course.State" Remaining="Course.RemainingSeats" />
+        </span>
+    </a>
+    <div class="body">
+        <div class="d-flex gap-2 flex-wrap mb-1">
+            @if (!string.IsNullOrEmpty(Course.CategoryName)) { <span class="chip chip-primary">@Course.CategoryName</span> }
+            <span class="chip"><i class="bi bi-display"></i> @DisplayNames.Of(Course.DeliveryMode)</span>
+        </div>
+        <h3><a href="/courses/@Course.Slug">@Course.Title</a></h3>
+        <div class="meta">
+            @if (!string.IsNullOrEmpty(Course.InstructorName)) { <span><i class="bi bi-person"></i> @Course.InstructorName</span> }
+            @if (Course.StartDate is not null) { <span><i class="bi bi-calendar3"></i> شروع: @Persian.ToJalaliLong(Course.StartDate)</span> }
+            @if (Course.RemainingSeats is { } r && Course.State == RegistrationState.Open) { <span><i class="bi bi-person-check"></i> @Persian.Digits(r) جای خالی</span> }
+        </div>
+        <div class="foot">
+            <a href="/courses/@Course.Slug" class="btn btn-sm btn-outline-primary">جزئیات و ثبت‌نام</a>
+            <PriceTag Price="Course.Price" DiscountPrice="Course.DiscountPrice" />
+        </div>
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public CourseCard Course { get; set; } = default!;
+}

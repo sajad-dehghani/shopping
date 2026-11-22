@@ -1,0 +1,52 @@
+@inject ContactService Contact
+
+@if (sent)
+{
+    <div class="alert alert-success mb-0"><i class="bi bi-check-circle ms-1"></i> پیام شما با موفقیت ارسال شد. به‌زودی با شما تماس می‌گیریم.</div>
+}
+else
+{
+    <EditForm Model="Input" method="post" OnValidSubmit="SubmitAsync" FormName="contact" Enhance>
+        <DataAnnotationsValidator />
+        @if (error is not null) { <div class="alert alert-danger">@error</div> }
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label required" for="c-name">نام و نام خانوادگی</label>
+                <InputText id="c-name" class="form-control" @bind-Value="Input.FullName" autocomplete="name" />
+                <ValidationMessage For="() => Input.FullName" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label required" for="c-mobile">شماره موبایل</label>
+                <InputText id="c-mobile" type="tel" class="form-control" @bind-Value="Input.Mobile" placeholder="۰۹۱۲۱۲۳۴۵۶۷" autocomplete="tel" inputmode="tel" />
+                <ValidationMessage For="() => Input.Mobile" />
+            </div>
+            <div class="col-12">
+                <label class="form-label" for="c-email">ایمیل (اختیاری)</label>
+                <InputText id="c-email" type="email" class="form-control" @bind-Value="Input.Email" autocomplete="email" />
+                <ValidationMessage For="() => Input.Email" />
+            </div>
+            <div class="col-12">
+                <label class="form-label required" for="c-msg">پیام</label>
+                <InputTextArea id="c-msg" class="form-control" rows="4" @bind-Value="Input.Message" />
+                <ValidationMessage For="() => Input.Message" />
+            </div>
+            <div class="d-none" aria-hidden="true"><InputText @bind-Value="Input.Website" tabindex="-1" autocomplete="off" /></div>
+            <div class="col-12"><button type="submit" class="btn btn-primary"><i class="bi bi-send ms-1"></i> ارسال پیام</button></div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "contact")] private ContactInput Input { get; set; } = default!;
+    private bool sent;
+    private string? error;
+
+    protected override void OnInitialized() => Input ??= new();
+
+    private async Task SubmitAsync()
+    {
+        var result = await Contact.SubmitAsync(Input, HttpContext.Connection.RemoteIpAddress?.ToString());
+        if (result.Succeeded) sent = true; else error = result.Error;
+    }
+}

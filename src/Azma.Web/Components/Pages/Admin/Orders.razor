@@ -1,0 +1,91 @@
+@page "/admin/orders"
+@rendermode InteractiveServer
+@inject SalesAdminService Sales
+@inject ISiteClock Clock
+@inject NavigationManager Nav
+
+<PageTitle>سفارش‌ها</PageTitle>
+
+<div class="admin-page-title">
+    <h1>سفارش‌ها و پرداخت‌ها</h1>
+    <a class="btn btn-sm btn-success" href="@ExportUrl" target="_blank"><i class="bi bi-file-earmark-excel ms-1"></i> خروجی Excel</a>
+</div>
+
+<div class="az-card p-3 mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-4"><label class="form-label small">جست‌وجو</label><input class="form-control form-control-sm" placeholder="نام، موبایل، شماره سفارش یا کد پیگیری" @bind="filter.Query" @bind:event="oninput" @onkeyup="OnKey" /></div>
+        <div class="col-md-2">
+            <label class="form-label small">وضعیت</label>
+            <select class="form-select form-select-sm" @bind="StatusValue">
+                <option value="">همه</option>
+                @foreach (var s in Enum.GetValues<OrderStatus>()) { <option value="@((int)s)">@DisplayNames.Of(s)</option> }
+            </select>
+        </div>
+        <div class="col-6 col-md-2"><label class="form-label small">از تاریخ</label><input class="form-control form-control-sm ltr" placeholder="1405/01/01" @bind="fromText" /></div>
+        <div class="col-6 col-md-2"><label class="form-label small">تا تاریخ</label><input class="form-control form-control-sm ltr" placeholder="1405/12/29" @bind="toText" /></div>
+        <div class="col-md-2 d-grid"><button class="btn btn-sm btn-primary" @onclick="SearchAsync"><i class="bi bi-funnel"></i> اعمال</button></div>
+    </div>
+</div>
+
+<div class="az-card">
+    <div class="table-responsive">
+        <table class="table table-az table-hover">
+            <thead><tr><th>شماره</th><th>مشتری</th><th>اقلام</th><th>مبلغ</th><th>وضعیت</th><th>کد پیگیری</th><th>تاریخ</th><th></th></tr></thead>
+            <tbody>
+                @if (result is not null)
+                {
+                    @foreach (var o in result.Items)
+                    {
+                        <tr>
+                            <td class="ltr text-end text-nowrap">@o.OrderNumber</td>
+                            <td>@o.CustomerName<div class="small text-muted ltr text-end">@o.Mobile</div></td>
+                            <td class="small">@o.Items</td>
+                            <td class="text-nowrap">@Persian.Toman(o.TotalAmount)</td>
+                            <td><OrderStatusBadge Status="o.Status" /></td>
+                            <td class="ltr text-end small">@o.TrackingCode</td>
+                            <td class="small text-nowrap">@Persian.ToJalali(Clock.ToLocal(o.CreatedAt), true)</td>
+                            <td><a class="btn btn-sm btn-light" href="/admin/orders/@o.Id">جزئیات</a></td>
+                        </tr>
+                    }
+                    @if (result.Items.Count == 0) { <tr><td colspan="8" class="text-center text-muted py-4">سفارشی یافت نشد.</td></tr> }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@if (result is not null) { <AdminPager Page="result.Page" TotalPages="result.TotalPages" TotalCount="result.TotalCount" PageChanged="GoAsync" /> }
+
+@code {
+    [SupplyParameterFromQuery(Name = "status")] private int? InitialStatus { get; set; }
+    private readonly OrderFilter filter = new();
+    private PagedResult<OrderRow>? result;
+    private string? fromText, toText;
+
+    private string StatusValue
+    {
+        get => filter.Status is { } s ? ((int)s).ToString() : "";
+        set => filter.Status = int.TryParse(value, out var v) && Enum.IsDefined(typeof(OrderStatus), v) ? (OrderStatus)v : null;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (InitialStatus is { } s && Enum.IsDefined(typeof(OrderStatus), s)) filter.Status = (OrderStatus)s;
+        await SearchAsync();
+    }
+
+    private async Task SearchAsync()
+    {
+        filter.From = Persian.TryParseJalali(fromText, out var f) ? f : null;
+        filter.To = Persian.TryParseJalali(toText, out var t) ? t : null;
+        filter.Page = 1;
+        result = await Sales.SearchOrdersAsync(filter);
+    }
+
+    private async Task GoAsync(int page) { filter.Page = page; result = await Sales.SearchOrdersAsync(filter); }
+    private async Task OnKey(KeyboardEventArgs e) { if (e.Key == "Enter") await SearchAsync(); }
+
+    private string ExportUrl => Nav.GetUriWithQueryParameters("/admin/export/orders", new Dictionary<string, object?>
+    {
+        ["q"] = filter.Query, ["status"] = filter.Status is { } s ? (int)s : null, ["from"] = fromText, ["to"] = toText,
+    });
+}

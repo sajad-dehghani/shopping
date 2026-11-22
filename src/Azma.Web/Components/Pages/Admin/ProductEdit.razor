@@ -1,0 +1,133 @@
+@page "/admin/products/new"
+@page "/admin/products/{Id:int}"
+@rendermode InteractiveServer
+@inject CatalogAdminService CatalogAdmin
+@inject NavigationManager Nav
+@inject ISiteClock Clock
+
+<PageTitle>@(Id is null ? "محصول جدید" : "ویرایش محصول")</PageTitle>
+<AdminToast Message="@ToastMessage" IsError="ToastIsError" OnClose="ClearToast" />
+
+<div class="admin-page-title">
+    <h1>@(Id is null ? "محصول جدید" : $"ویرایش: {model?.Name}")</h1>
+    <a href="/admin/products" class="btn btn-sm btn-light">بازگشت</a>
+</div>
+
+@if (model is null) { <p class="text-muted">در حال بارگذاری...</p> return; }
+
+<EditForm Model="model" OnValidSubmit="SaveAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="validation-errors alert alert-danger" />
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="az-card p-4 mb-3">
+                <div class="row g-3">
+                    <div class="col-md-8"><label class="form-label required">نام محصول</label><InputText class="form-control" @bind-Value="model.Name" /></div>
+                    <div class="col-md-4"><label class="form-label required">کد محصول (SKU)</label><InputText class="form-control ltr" @bind-Value="model.Sku" /></div>
+                    <div class="col-md-6"><label class="form-label">آدرس (اسلاگ)</label><InputText class="form-control ltr" @bind-Value="model.Slug" placeholder="خودکار از نام" /></div>
+                    <div class="col-md-3">
+                        <label class="form-label">نوع</label>
+                        <InputSelect class="form-select" @bind-Value="model.ProductType">
+                            @foreach (var t in Enum.GetValues<ProductType>()) { <option value="@t">@DisplayNames.Of(t)</option> }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">دسته‌بندی</label>
+                        <InputSelect class="form-select" @bind-Value="model.CategoryId">
+                            <option value="">بدون دسته</option>
+                            @foreach (var c in categories) { <option value="@c.Id">@c.Name</option> }
+                        </InputSelect>
+                    </div>
+                    <div class="col-12"><label class="form-label">توضیح کوتاه</label><InputText class="form-control" @bind-Value="model.ShortDescription" /></div>
+                    <div class="col-12"><label class="form-label">توضیحات کامل</label><InputTextArea class="form-control" rows="6" @bind-Value="model.Description" /></div>
+                </div>
+            </div>
+            <div class="az-card p-4 mb-3">
+                <label class="form-label">تصویر اصلی</label>
+                <ImageUpload @bind-Value="model.ImagePath" Folder="products" />
+                <h3 class="h6 mt-4">تصاویر بیشتر</h3>
+                <div class="d-flex flex-wrap gap-3 mb-3">
+                    @foreach (var img in model.Images)
+                    {
+                        <div class="text-center"><img src="@img.Path" class="upload-thumb d-block mb-1" alt="" /><button type="button" class="btn btn-sm btn-link text-danger" @onclick="() => model.Images.Remove(img)">حذف</button></div>
+                    }
+                </div>
+                <ImageUpload Value="@null" ValueChanged="AddImage" Folder="products" AllowRemove="false" />
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="az-card p-4 mb-3">
+                <div class="mb-3"><label class="form-label required">قیمت (تومان)</label><InputNumber class="form-control ltr" @bind-Value="model.Price" /></div>
+                <div class="mb-3"><label class="form-label">قیمت با تخفیف (تومان)</label><InputNumber class="form-control ltr" @bind-Value="model.DiscountPrice" /></div>
+                <div class="mb-3"><label class="form-label">موجودی انبار</label><InputNumber class="form-control ltr" @bind-Value="model.Stock" /><div class="form-text">خالی = بدون کنترل موجودی</div></div>
+                <div class="form-check form-switch mb-2"><InputCheckbox class="form-check-input" id="avail" @bind-Value="model.IsAvailable" /><label class="form-check-label" for="avail">قابل فروش (موجود)</label></div>
+                <div class="form-check form-switch mb-3"><InputCheckbox class="form-check-input" id="feat" @bind-Value="model.IsFeatured" /><label class="form-check-label" for="feat">محصول ویژه</label></div>
+                <div class="mb-3">
+                    <label class="form-label">وضعیت انتشار</label>
+                    <InputSelect class="form-select" @bind-Value="model.Status">
+                        @foreach (var s in Enum.GetValues<PublishStatus>()) { <option value="@s">@DisplayNames.Of(s)</option> }
+                    </InputSelect>
+                </div>
+                <div class="mb-3"><label class="form-label">ترتیب نمایش</label><InputNumber class="form-control" @bind-Value="model.SortOrder" /></div>
+                <button type="submit" class="btn btn-primary w-100" disabled="@Busy"><i class="bi bi-check2 ms-1"></i> ذخیره</button>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+@if (Id is not null)
+{
+    <div class="az-card mt-3">
+        <h2 class="h6 p-3 m-0 border-bottom">سفارش‌های این محصول</h2>
+        <div class="table-responsive">
+            <table class="table table-az">
+                <thead><tr><th>سفارش</th><th>مشتری</th><th>تعداد</th><th>مبلغ</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+                <tbody>
+                    @foreach (var o in orders)
+                    {
+                        <tr>
+                            <td><a href="/admin/orders/@o.Id" class="ltr">@o.OrderNumber</a></td>
+                            <td>@o.CustomerName <span class="small text-muted ltr">@o.Mobile</span></td>
+                            <td>@Persian.Digits(o.Items)</td>
+                            <td>@Persian.Toman(o.TotalAmount)</td>
+                            <td><OrderStatusBadge Status="o.Status" /></td>
+                            <td class="small">@Persian.ToJalali(Clock.ToLocal(o.CreatedAt), true)</td>
+                        </tr>
+                    }
+                    @if (orders.Count == 0) { <tr><td colspan="6" class="text-center text-muted py-3">سفارشی ثبت نشده است.</td></tr> }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+    private ProductEditModel? model;
+    private List<CategoryOption> categories = [];
+    private List<OrderRow> orders = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        categories = await CatalogAdmin.ProductCategoryOptionsAsync();
+        model = Id is { } id ? await CatalogAdmin.GetProductForEditAsync(id) : new ProductEditModel();
+        if (Id is { } pid) orders = await CatalogAdmin.ProductOrdersAsync(pid);
+        if (model is null) ShowError("محصول یافت نشد.");
+    }
+
+    private void AddImage(string? path) { if (path is not null) model!.Images.Add(new ImageEditModel { Path = path }); }
+
+    private async Task SaveAsync()
+    {
+        Busy = true;
+        try
+        {
+            var r = await CatalogAdmin.SaveProductAsync(model!, await GetActorAsync());
+            if (!r.Succeeded) { ShowError(r.Error); return; }
+            ShowOk("محصول ذخیره شد.");
+            if (Id is null) { Nav.NavigateTo($"/admin/products/{r.Value}"); return; }
+            model = await CatalogAdmin.GetProductForEditAsync(r.Value);
+        }
+        finally { Busy = false; }
+    }
+}

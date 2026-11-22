@@ -1,0 +1,51 @@
+@page "/order/track"
+@using System.ComponentModel.DataAnnotations
+@using Azma.Application.Checkout
+@inject CheckoutService Checkout
+@inject NavigationManager Nav
+
+<PageTitle>پیگیری سفارش</PageTitle>
+
+<div class="page-header"><div class="container"><h1>پیگیری سفارش</h1></div></div>
+<section class="section-sm">
+    <div class="container" style="max-width:520px">
+        <div class="az-card p-4">
+            <p class="text-muted">شماره سفارش یا کد پیگیری و شماره موبایلی را که هنگام ثبت سفارش وارد کرده‌اید بنویسید.</p>
+            <EditForm Model="Input" method="post" OnValidSubmit="SubmitAsync" FormName="track">
+                <DataAnnotationsValidator />
+                @if (notFound) { <div class="alert alert-warning">سفارشی با این مشخصات یافت نشد.</div> }
+                <div class="mb-3">
+                    <label class="form-label required" for="num">شماره سفارش یا کد پیگیری</label>
+                    <InputText id="num" class="form-control ltr" @bind-Value="Input.Number" />
+                    <ValidationMessage For="() => Input.Number" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label required" for="mob">شماره موبایل</label>
+                    <InputText id="mob" type="tel" class="form-control" @bind-Value="Input.Mobile" inputmode="tel" />
+                    <ValidationMessage For="() => Input.Mobile" />
+                </div>
+                <button class="btn btn-primary w-100" type="submit">جست‌وجوی سفارش</button>
+            </EditForm>
+        </div>
+    </div>
+</section>
+
+@code {
+    [SupplyParameterFromForm(FormName = "track")] private TrackInput Input { get; set; } = default!;
+    private bool notFound;
+
+    protected override void OnInitialized() => Input ??= new();
+
+    private async Task SubmitAsync()
+    {
+        var id = await Checkout.FindOrderAsync(Input.Number, Input.Mobile);
+        if (id is null) { notFound = true; return; }
+        Nav.NavigateTo($"/order/{id}");
+    }
+
+    private sealed class TrackInput
+    {
+        [Required(ErrorMessage = "شماره سفارش را وارد کنید."), StringLength(30)] public string Number { get; set; } = "";
+        [Required(ErrorMessage = "شماره موبایل را وارد کنید."), StringLength(20)] public string Mobile { get; set; } = "";
+    }
+}

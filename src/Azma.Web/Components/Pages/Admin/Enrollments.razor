@@ -1,0 +1,103 @@
+@page "/admin/enrollments"
+@rendermode InteractiveServer
+@inject SalesAdminService Sales
+@inject CatalogAdminService CatalogAdmin
+@inject ISiteClock Clock
+@inject NavigationManager Nav
+
+<PageTitle>ثبت‌نام‌ها</PageTitle>
+
+<div class="admin-page-title">
+    <h1>ثبت‌نام‌ها</h1>
+    <a class="btn btn-sm btn-success" href="@ExportUrl" target="_blank"><i class="bi bi-file-earmark-excel ms-1"></i> خروجی Excel</a>
+</div>
+
+<div class="az-card p-3 mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3"><label class="form-label small">جست‌وجو</label><input class="form-control form-control-sm" placeholder="نام، موبایل، شماره سفارش" @bind="filter.Query" @bind:event="oninput" @onkeyup="OnKey" /></div>
+        <div class="col-md-3">
+            <label class="form-label small">دوره</label>
+            <select class="form-select form-select-sm" @bind="CourseValue">
+                <option value="">همه دوره‌ها</option>
+                @foreach (var c in courses) { <option value="@c.Id">@c.Name</option> }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">وضعیت</label>
+            <select class="form-select form-select-sm" @bind="StatusValue">
+                <option value="">همه</option>
+                @foreach (var s in Enum.GetValues<EnrollmentStatus>()) { <option value="@((int)s)">@DisplayNames.Of(s)</option> }
+            </select>
+        </div>
+        <div class="col-6 col-md-1"><label class="form-label small">از</label><input class="form-control form-control-sm ltr" placeholder="1405/01/01" @bind="fromText" /></div>
+        <div class="col-6 col-md-1"><label class="form-label small">تا</label><input class="form-control form-control-sm ltr" placeholder="1405/12/29" @bind="toText" /></div>
+        <div class="col-md-2 d-grid"><button class="btn btn-sm btn-primary" @onclick="SearchAsync"><i class="bi bi-funnel"></i> اعمال</button></div>
+    </div>
+</div>
+
+<div class="az-card">
+    <div class="table-responsive">
+        <table class="table table-az table-hover">
+            <thead><tr><th>نام و نام خانوادگی</th><th>موبایل</th><th>دوره</th><th>تاریخ</th><th>مبلغ پرداختی</th><th>ثبت‌نام</th><th>پرداخت</th><th>کد پیگیری</th><th></th></tr></thead>
+            <tbody>
+                @if (result is not null)
+                {
+                    @foreach (var e in result.Items)
+                    {
+                        <tr>
+                            <td>@e.FullName</td>
+                            <td class="ltr text-end">@e.Mobile</td>
+                            <td class="small">@e.CourseTitle</td>
+                            <td class="small text-nowrap">@Persian.ToJalali(Clock.ToLocal(e.CreatedAt), true)</td>
+                            <td class="text-nowrap">@Persian.Toman(e.PaidAmount)</td>
+                            <td><span class="badge @(e.Status == EnrollmentStatus.Confirmed ? "bg-success" : e.Status == EnrollmentStatus.Cancelled ? "bg-secondary" : "bg-warning text-dark")">@DisplayNames.Of(e.Status)</span></td>
+                            <td><OrderStatusBadge Status="e.OrderStatus" /></td>
+                            <td class="ltr text-end small">@e.TrackingCode</td>
+                            <td><a class="btn btn-sm btn-light" href="/admin/orders/@e.OrderId">جزئیات</a></td>
+                        </tr>
+                    }
+                    @if (result.Items.Count == 0) { <tr><td colspan="9" class="text-center text-muted py-4">ثبت‌نامی یافت نشد.</td></tr> }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@if (result is not null) { <AdminPager Page="result.Page" TotalPages="result.TotalPages" TotalCount="result.TotalCount" PageChanged="GoAsync" /> }
+
+@code {
+    [SupplyParameterFromQuery(Name = "courseId")] private int? InitialCourse { get; set; }
+    private readonly EnrollmentFilter filter = new();
+    private PagedResult<EnrollmentRow>? result;
+    private List<CategoryOption> courses = [];
+    private string? fromText, toText;
+
+    private string CourseValue { get => filter.CourseId?.ToString() ?? ""; set => filter.CourseId = int.TryParse(value, out var v) ? v : null; }
+    private string StatusValue
+    {
+        get => filter.Status is { } s ? ((int)s).ToString() : "";
+        set => filter.Status = int.TryParse(value, out var v) && Enum.IsDefined(typeof(EnrollmentStatus), v) ? (EnrollmentStatus)v : null;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        courses = await CatalogAdmin.CourseOptionsAsync();
+        filter.CourseId = InitialCourse;
+        await SearchAsync();
+    }
+
+    private async Task SearchAsync()
+    {
+        filter.From = Persian.TryParseJalali(fromText, out var f) ? f : null;
+        filter.To = Persian.TryParseJalali(toText, out var t) ? t : null;
+        filter.Page = 1;
+        result = await Sales.SearchEnrollmentsAsync(filter);
+    }
+
+    private async Task GoAsync(int page) { filter.Page = page; result = await Sales.SearchEnrollmentsAsync(filter); }
+    private async Task OnKey(KeyboardEventArgs e) { if (e.Key == "Enter") await SearchAsync(); }
+
+    private string ExportUrl => Nav.GetUriWithQueryParameters("/admin/export/enrollments", new Dictionary<string, object?>
+    {
+        ["q"] = filter.Query, ["courseId"] = filter.CourseId, ["status"] = filter.Status is { } s ? (int)s : null, ["from"] = fromText, ["to"] = toText,
+    });
+}

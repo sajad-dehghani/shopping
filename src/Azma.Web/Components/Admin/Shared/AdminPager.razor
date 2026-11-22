@@ -1,0 +1,22 @@
+@if (TotalPages > 1)
+{
+    <nav class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+        <span class="small text-muted">@Persian.Digits(TotalCount) مورد — صفحه @Persian.Digits(Page) از @Persian.Digits(TotalPages)</span>
+        <div class="btn-group" dir="ltr">
+            <button class="btn btn-sm btn-light" disabled="@(Page >= TotalPages)" @onclick="() => Go(Page + 1)"><i class="bi bi-chevron-left"></i> بعدی</button>
+            <button class="btn btn-sm btn-light" disabled="@(Page <= 1)" @onclick="() => Go(Page - 1)">قبلی <i class="bi bi-chevron-right"></i></button>
+        </div>
+    </nav>
+}
+else if (TotalCount > 0)
+{
+    <div class="small text-muted mt-3">@Persian.Digits(TotalCount) مورد</div>
+}
+
+@code {
+    [Parameter] public int Page { get; set; }
+    [Parameter] public int TotalPages { get; set; }
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public EventCallback<int> PageChanged { get; set; }
+    private Task Go(int p) => PageChanged.InvokeAsync(p);
+}

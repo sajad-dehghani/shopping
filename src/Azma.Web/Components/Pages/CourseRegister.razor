@@ -1,0 +1,179 @@
+@page "/courses/{Slug}/register"
+@using Azma.Application.Checkout
+@using Azma.Application.Payments
+@inject CatalogService Catalog
+@inject CheckoutService Checkout
+@inject PaymentService Payments
+@inject SiteUrls Urls
+@inject FlashMessages Flash
+@inject NavigationManager Nav
+
+<PageTitle>ثبت‌نام در @details?.Course.Title</PageTitle>
+
+@if (details is null) { return; }
+@{ var c = details.Course; }
+
+<div class="page-header">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/courses">دوره‌ها</a></li>
+                <li class="breadcrumb-item"><a href="/courses/@c.Slug">@c.Title</a></li>
+                <li class="breadcrumb-item active">ثبت‌نام</li>
+            </ol>
+        </nav>
+        <h1>ثبت‌نام در دوره</h1>
+    </div>
+</div>
+
+<section class="section-sm">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="az-card p-4">
+                    @if (!details.CanRegister)
+                    {
+                        <div class="alert alert-warning mb-0">@DisplayNames.Of(details.State). <a href="/courses/@c.Slug">بازگشت به صفحه دوره</a></div>
+                    }
+                    else
+                    {
+                        <EditForm Model="Input" method="post" OnValidSubmit="SubmitAsync" FormName="course-register">
+                            <DataAnnotationsValidator />
+                            @if (error is not null) { <div class="alert alert-danger"><i class="bi bi-exclamation-circle ms-1"></i> @error</div> }
+                            <ValidationSummary class="validation-errors mb-3" />
+
+                            <h2 class="h6 text-muted mb-3">اطلاعات شرکت‌کننده</h2>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label required" for="fullname">نام و نام خانوادگی</label>
+                                    <InputText id="fullname" class="form-control" @bind-Value="Input.FullName" autocomplete="name" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label required" for="mobile">شماره موبایل</label>
+                                    <InputText id="mobile" type="tel" class="form-control" @bind-Value="Input.Mobile" placeholder="۰۹۱۲۱۲۳۴۵۶۷" autocomplete="tel" inputmode="tel" />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="email">ایمیل <span class="text-muted fw-normal">(اختیاری)</span></label>
+                                    <InputText id="email" type="email" class="form-control" @bind-Value="Input.Email" autocomplete="email" />
+                                </div>
+
+                                @foreach (var f in c.RegistrationFields)
+                                {
+                                    var key = f.Id.ToString();
+                                    var name = $"Input.Fields[{key}]";
+                                    Input.Fields.TryGetValue(key, out var current);
+                                    <div class="col-12">
+                                        @switch (f.FieldType)
+                                        {
+                                            case RegistrationFieldType.Checkbox:
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="f-@key" name="@name" value="true" checked="@(current == "true")" />
+                                                    <label class="form-check-label @(f.IsRequired ? "required" : null)" for="f-@key">@f.Label</label>
+                                                </div>
+                                                break;
+                                            case RegistrationFieldType.Select:
+                                                <label class="form-label @(f.IsRequired ? "required" : null)" for="f-@key">@f.Label</label>
+                                                <select class="form-select" id="f-@key" name="@name" required="@f.IsRequired">
+                                                    <option value="">انتخاب کنید...</option>
+                                                    @foreach (var o in f.OptionItems) { <option value="@o" selected="@(o == current)">@o</option> }
+                                                </select>
+                                                break;
+                                            case RegistrationFieldType.TextArea:
+                                                <label class="form-label @(f.IsRequired ? "required" : null)" for="f-@key">@f.Label</label>
+                                                <textarea class="form-control" id="f-@key" name="@name" rows="3" maxlength="1000" required="@f.IsRequired">@current</textarea>
+                                                break;
+                                            default:
+                                                <label class="form-label @(f.IsRequired ? "required" : null)" for="f-@key">@f.Label</label>
+                                                <input class="form-control" id="f-@key" name="@name" value="@current" maxlength="1000" required="@f.IsRequired"
+                                                       inputmode="@(f.FieldType == RegistrationFieldType.Number ? "decimal" : null)" />
+                                                break;
+                                        }
+                                    </div>
+                                }
+
+                                <div class="col-12">
+                                    <label class="form-label" for="notes">توضیحات <span class="text-muted fw-normal">(اختیاری)</span></label>
+                                    <InputTextArea id="notes" class="form-control" rows="3" @bind-Value="Input.Notes" />
+                                </div>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(c.RegistrationTerms))
+                            {
+                                <div class="alert alert-light border small mt-4 mb-0 pre-line"><strong class="d-block mb-1">شرایط ثبت‌نام</strong>@c.RegistrationTerms</div>
+                            }
+
+                            <button type="submit" class="btn btn-success btn-lg w-100 mt-4">
+                                @if (c.FinalPrice == 0) { <span><i class="bi bi-check2-circle ms-1"></i> ثبت‌نام رایگان</span> }
+                                else { <span><i class="bi bi-credit-card ms-1"></i> پرداخت @Persian.Toman(c.FinalPrice)</span> }
+                            </button>
+                            <p class="small text-muted text-center mt-2 mb-0">با ثبت‌نام، شرایط و <a href="/terms" target="_blank">قوانین سایت</a> را می‌پذیرید.</p>
+                        </EditForm>
+                    }
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="az-card checkout-summary p-4 buy-box">
+                    <h2 class="h6 mb-3">خلاصه سفارش</h2>
+                    <div class="d-flex gap-3 mb-3">
+                        <div style="width:96px;flex-shrink:0" class="rounded overflow-hidden border"><Thumb Src="@c.CoverImagePath" Alt="@c.Title" Icon="bi-journal-bookmark" /></div>
+                        <div>
+                            <div class="fw-bold">@c.Title</div>
+                            @if (c.Instructor is not null) { <div class="small text-muted">مدرس: @c.Instructor.FullName</div> }
+                            @if (c.StartDate is not null) { <div class="small text-muted">شروع: @Persian.ToJalaliLong(c.StartDate)</div> }
+                        </div>
+                    </div>
+                    <ul class="info-list">
+                        <li><span class="k">هزینه دوره</span><span class="v">@Persian.Toman(c.Price)</span></li>
+                        @if (c.FinalPrice < c.Price) { <li><span class="k">تخفیف</span><span class="v text-danger">@Persian.Toman(c.Price - c.FinalPrice)</span></li> }
+                        <li><span class="k fw-bold text-dark">مبلغ قابل پرداخت</span><span class="v fs-5">@Persian.Toman(c.FinalPrice)</span></li>
+                    </ul>
+                    <p class="small text-muted mt-3 mb-0"><i class="bi bi-lock ms-1"></i> پس از تکمیل فرم به درگاه امن زرین‌پال منتقل می‌شوید. ثبت‌نام شما فقط پس از تأیید پرداخت قطعی می‌شود.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter] public string Slug { get; set; } = "";
+    [SupplyParameterFromForm(FormName = "course-register")] private CourseCheckoutInput Input { get; set; } = default!;
+    private CourseDetails? details;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new();
+        details = await Catalog.GetCourseAsync(Slug);
+        if (details is null) Nav.NotFound();
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (details is null) return;
+        var created = await Checkout.CreateCourseOrderAsync(details.Course.Id, Input);
+        if (!created.Succeeded)
+        {
+            error = created.Error;
+            details = await Catalog.GetCourseAsync(Slug); // refresh capacity / state
+            return;
+        }
+        await GoToPaymentAsync(created.Value!);
+    }
+
+    private async Task GoToPaymentAsync(CheckoutResult order)
+    {
+        if (order.IsFree)
+        {
+            Nav.NavigateTo($"/order/{order.OrderPublicId}");
+            return;
+        }
+        var payment = await Payments.StartPaymentAsync(order.OrderPublicId, Urls.PaymentCallback);
+        if (payment.Succeeded)
+        {
+            Nav.NavigateTo(payment.Value!); // external redirect to the gateway
+            return;
+        }
+        Flash.Set(payment.Error!);
+        Nav.NavigateTo($"/order/{order.OrderPublicId}");
+    }
+}

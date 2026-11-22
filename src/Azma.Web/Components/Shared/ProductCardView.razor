@@ -1,0 +1,25 @@
+<article class="item-card">
+    <a class="thumb square" href="/products/@Product.Slug" tabindex="-1">
+        <Thumb Src="@Product.ImagePath" Alt="@Product.Name" Icon="bi-box-seam" Width="500" Height="500" />
+        @if (Money.DiscountPercent(Product.Price, Product.DiscountPrice) is > 0 and var pct)
+        {
+            <span class="badge-corner discount-badge">٪@Persian.Digits(pct) تخفیف</span>
+        }
+    </a>
+    <div class="body">
+        <div class="d-flex gap-2 flex-wrap mb-1">
+            @if (!string.IsNullOrEmpty(Product.CategoryName)) { <span class="chip chip-primary">@Product.CategoryName</span> }
+            @if (Product.InStock) { <span class="chip chip-success">موجود</span> } else { <span class="chip chip-danger">ناموجود</span> }
+        </div>
+        <h3><a href="/products/@Product.Slug">@Product.Name</a></h3>
+        @if (!string.IsNullOrEmpty(Product.ShortDescription)) { <p class="text-muted small mb-0">@Product.ShortDescription</p> }
+        <div class="foot">
+            <a href="/products/@Product.Slug" class="btn btn-sm @(Product.InStock ? "btn-primary" : "btn-light")">@(Product.InStock ? "خرید" : "مشاهده")</a>
+            <PriceTag Price="Product.Price" DiscountPrice="Product.DiscountPrice" />
+        </div>
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public ProductCard Product { get; set; } = default!;
+}

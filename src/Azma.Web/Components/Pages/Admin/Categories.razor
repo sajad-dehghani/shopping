@@ -1,0 +1,82 @@
+@page "/admin/categories"
+@rendermode InteractiveServer
+@inject ContentAdminService Content
+
+<PageTitle>دسته‌بندی‌ها</PageTitle>
+<AdminToast Message="@ToastMessage" IsError="ToastIsError" OnClose="ClearToast" />
+<div class="admin-page-title"><h1>دسته‌بندی‌ها</h1></div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="az-card p-3">
+            <h2 class="h6">دسته‌بندی دوره‌ها</h2>
+            <table class="table table-az">
+                <thead><tr><th>نام</th><th>اسلاگ</th><th>ترتیب</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var c in courseCats)
+                    {
+                        <tr>
+                            <td><input class="form-control form-control-sm" @bind="c.Name" /></td>
+                            <td><input class="form-control form-control-sm ltr" @bind="c.Slug" /></td>
+                            <td style="width:80px"><input type="number" class="form-control form-control-sm" @bind="c.SortOrder" /></td>
+                            <td class="text-nowrap">
+                                <button class="btn btn-sm btn-primary" @onclick="() => SaveAsync(c)"><i class="bi bi-check2"></i></button>
+                                @if (c.Id != 0) { <ConfirmButton OnConfirm="() => DeleteAsync<CourseCategory>(c.Id)"><i class="bi bi-trash"></i></ConfirmButton> }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <button class="btn btn-sm btn-light" @onclick="() => courseCats.Add(new())"><i class="bi bi-plus"></i> افزودن</button>
+            <p class="small text-muted mt-2 mb-0">با حذف دسته‌بندی، دوره‌های آن بدون دسته می‌شوند.</p>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="az-card p-3">
+            <h2 class="h6">دسته‌بندی محصولات</h2>
+            <table class="table table-az">
+                <thead><tr><th>نام</th><th>اسلاگ</th><th>ترتیب</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var c in productCats)
+                    {
+                        <tr>
+                            <td><input class="form-control form-control-sm" @bind="c.Name" /></td>
+                            <td><input class="form-control form-control-sm ltr" @bind="c.Slug" /></td>
+                            <td style="width:80px"><input type="number" class="form-control form-control-sm" @bind="c.SortOrder" /></td>
+                            <td class="text-nowrap">
+                                <button class="btn btn-sm btn-primary" @onclick="() => SaveAsync(c)"><i class="bi bi-check2"></i></button>
+                                @if (c.Id != 0) { <ConfirmButton OnConfirm="() => DeleteAsync<ProductCategory>(c.Id)"><i class="bi bi-trash"></i></ConfirmButton> }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <button class="btn btn-sm btn-light" @onclick="() => productCats.Add(new())"><i class="bi bi-plus"></i> افزودن</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<CourseCategory> courseCats = [];
+    private List<ProductCategory> productCats = [];
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        courseCats = await Content.ListAsync<CourseCategory>();
+        productCats = await Content.ListAsync<ProductCategory>();
+    }
+
+    private async Task SaveAsync<T>(T entity) where T : Entity
+    {
+        var r = await Content.SaveAsync(entity, await GetActorAsync());
+        if (r.Succeeded) { ShowOk("ذخیره شد."); await LoadAsync(); } else ShowError(r.Error);
+    }
+
+    private async Task DeleteAsync<T>(int id) where T : Entity
+    {
+        var r = await Content.DeleteAsync<T>(id, await GetActorAsync());
+        if (r.Succeeded) { ShowOk("حذف شد."); await LoadAsync(); } else ShowError(r.Error);
+    }
+}

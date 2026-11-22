@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Azma.Application/Azma.Application.csproj" />
+    <Project Path="src/Azma.Domain/Azma.Domain.csproj" />
+    <Project Path="src/Azma.Infrastructure/Azma.Infrastructure.csproj" />
+    <Project Path="src/Azma.Web/Azma.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Azma.Tests/Azma.Tests.csproj" />
+  </Folder>
+</Solution>

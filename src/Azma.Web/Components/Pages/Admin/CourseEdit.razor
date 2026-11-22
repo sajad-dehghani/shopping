@@ -1,0 +1,192 @@
+@page "/admin/courses/new"
+@page "/admin/courses/{Id:int}"
+@rendermode InteractiveServer
+@inject CatalogAdminService CatalogAdmin
+@inject NavigationManager Nav
+
+<PageTitle>@(Id is null ? "دوره جدید" : "ویرایش دوره")</PageTitle>
+<AdminToast Message="@ToastMessage" IsError="ToastIsError" OnClose="ClearToast" />
+
+<div class="admin-page-title">
+    <h1>@(Id is null ? "دوره جدید" : $"ویرایش: {model?.Title}")</h1>
+    <div class="d-flex gap-2">
+        @if (Id is not null) { <a href="/admin/enrollments?courseId=@Id" class="btn btn-sm btn-light"><i class="bi bi-people"></i> ثبت‌نام‌کنندگان</a> }
+        <a href="/admin/courses" class="btn btn-sm btn-light">بازگشت</a>
+    </div>
+</div>
+
+@if (model is null) { <p class="text-muted">در حال بارگذاری...</p> return; }
+
+<EditForm Model="model" OnValidSubmit="SaveAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="validation-errors alert alert-danger" />
+
+    <div class="admin-tabs">
+        @foreach (var (key, label) in tabs)
+        {
+            <button type="button" class="@(tab == key ? "active" : null)" @onclick="() => tab = key">@label</button>
+        }
+    </div>
+
+    <div class="az-card p-4 mb-3" hidden="@(tab != "info")">
+        <div class="row g-3">
+            <div class="col-md-8"><label class="form-label required">عنوان دوره</label><InputText class="form-control" @bind-Value="model.Title" /></div>
+            <div class="col-md-4"><label class="form-label">آدرس (اسلاگ)</label><InputText class="form-control ltr" @bind-Value="model.Slug" placeholder="خودکار از عنوان" /></div>
+            <div class="col-md-4">
+                <label class="form-label">دسته‌بندی</label>
+                <InputSelect class="form-select" @bind-Value="model.CategoryId">
+                    <option value="">بدون دسته</option>
+                    @foreach (var c in categories) { <option value="@c.Id">@c.Name</option> }
+                </InputSelect>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">مدرس</label>
+                <InputSelect class="form-select" @bind-Value="model.InstructorId">
+                    <option value="">تعیین نشده</option>
+                    @foreach (var i in instructors) { <option value="@i.Id">@i.Name</option> }
+                </InputSelect>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">وضعیت انتشار</label>
+                <InputSelect class="form-select" @bind-Value="model.Status">
+                    @foreach (var s in Enum.GetValues<PublishStatus>()) { <option value="@s">@DisplayNames.Of(s)</option> }
+                </InputSelect>
+            </div>
+            <div class="col-12"><label class="form-label">توضیح کوتاه</label><InputText class="form-control" @bind-Value="model.ShortDescription" maxlength="500" /></div>
+            <div class="col-12"><label class="form-label">معرفی و توضیحات کامل</label><InputTextArea class="form-control" rows="6" @bind-Value="model.Description" /></div>
+            <div class="col-md-6"><label class="form-label">سرفصل‌ها <span class="form-text">(هر سرفصل در یک خط)</span></label><InputTextArea class="form-control" rows="7" @bind-Value="model.Syllabus" /></div>
+            <div class="col-md-6">
+                <label class="form-label">پیش‌نیازها</label><InputTextArea class="form-control mb-3" rows="3" @bind-Value="model.Prerequisites" />
+                <label class="form-label">شرایط ثبت‌نام</label><InputTextArea class="form-control" rows="3" @bind-Value="model.RegistrationTerms" />
+            </div>
+            <div class="col-md-4"><div class="form-check form-switch"><InputCheckbox class="form-check-input" id="featured" @bind-Value="model.IsFeatured" /><label class="form-check-label" for="featured">نمایش به عنوان دوره ویژه</label></div></div>
+            <div class="col-md-4"><div class="form-check form-switch"><InputCheckbox class="form-check-input" id="dup" @bind-Value="model.AllowDuplicateEnrollment" /><label class="form-check-label" for="dup">اجازه ثبت‌نام تکراری با یک موبایل</label></div></div>
+            <div class="col-md-4"><label class="form-label">ترتیب نمایش</label><InputNumber class="form-control" @bind-Value="model.SortOrder" /></div>
+        </div>
+    </div>
+
+    <div class="az-card p-4 mb-3" hidden="@(tab != "sale")">
+        <div class="row g-3">
+            <div class="col-md-4"><label class="form-label required">قیمت اصلی (تومان)</label><InputNumber class="form-control ltr" @bind-Value="model.Price" /><div class="form-text">۰ = رایگان</div></div>
+            <div class="col-md-4"><label class="form-label">قیمت با تخفیف (تومان)</label><InputNumber class="form-control ltr" @bind-Value="model.DiscountPrice" /><div class="form-text">خالی = بدون تخفیف</div></div>
+            <div class="col-md-4"><label class="form-label">ظرفیت (نفر)</label><InputNumber class="form-control ltr" @bind-Value="model.Capacity" /><div class="form-text">خالی = نامحدود</div></div>
+            <div class="col-md-3"><label class="form-label">شروع ثبت‌نام</label><JalaliDateInput @bind-Value="model.RegistrationStartsOn" /></div>
+            <div class="col-md-3"><label class="form-label">پایان ثبت‌نام</label><JalaliDateInput @bind-Value="model.RegistrationEndsOn" /></div>
+            <div class="col-12 small text-muted">مبلغ نهایی: <strong>@Persian.Toman(Money.FinalPrice(model.Price, model.DiscountPrice))</strong> — هنگام پرداخت به ریال (×۱۰) به درگاه ارسال می‌شود.</div>
+        </div>
+    </div>
+
+    <div class="az-card p-4 mb-3" hidden="@(tab != "time")">
+        <div class="row g-3">
+            <div class="col-md-3"><label class="form-label">تاریخ شروع دوره</label><JalaliDateInput @bind-Value="model.StartDate" /></div>
+            <div class="col-md-3"><label class="form-label">تاریخ پایان دوره</label><JalaliDateInput @bind-Value="model.EndDate" /></div>
+            <div class="col-md-3"><label class="form-label">مدت دوره</label><InputText class="form-control" @bind-Value="model.Duration" placeholder="مثلاً ۲۴ ساعت" /></div>
+            <div class="col-md-3">
+                <label class="form-label">نوع برگزاری</label>
+                <InputSelect class="form-select" @bind-Value="model.DeliveryMode">
+                    @foreach (var d in Enum.GetValues<DeliveryMode>()) { <option value="@d">@DisplayNames.Of(d)</option> }
+                </InputSelect>
+            </div>
+            <div class="col-md-6"><label class="form-label">آدرس محل برگزاری</label><InputText class="form-control" @bind-Value="model.Location" /></div>
+            <div class="col-md-3"><label class="form-label">بستر آنلاین</label><InputText class="form-control" @bind-Value="model.OnlinePlatform" placeholder="اسکای‌روم، گوگل‌میت..." /></div>
+            <div class="col-md-3"><label class="form-label">تلفن پشتیبانی دوره</label><InputText class="form-control ltr" @bind-Value="model.SupportPhone" /></div>
+        </div>
+        <h3 class="h6 mt-4">روز و ساعت برگزاری</h3>
+        @foreach (var s in model.Schedules)
+        {
+            <div class="row g-2 align-items-center mb-2">
+                <div class="col-md-3">
+                    <InputSelect class="form-select form-select-sm" @bind-Value="s.DayOfWeek">
+                        @foreach (var d in Persian.WeekDays) { <option value="@d">@Persian.DayName(d)</option> }
+                    </InputSelect>
+                </div>
+                <div class="col-5 col-md-2"><InputDate Type="InputDateType.Time" class="form-control form-control-sm" @bind-Value="s.StartTime" /></div>
+                <div class="col-5 col-md-2"><InputDate Type="InputDateType.Time" class="form-control form-control-sm" @bind-Value="s.EndTime" /></div>
+                <div class="col-md-4"><InputText class="form-control form-control-sm" @bind-Value="s.Note" placeholder="توضیح (اختیاری)" /></div>
+                <div class="col-2 col-md-1"><button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => model.Schedules.Remove(s)"><i class="bi bi-x"></i></button></div>
+            </div>
+        }
+        <button type="button" class="btn btn-sm btn-light" @onclick="() => model.Schedules.Add(new())"><i class="bi bi-plus"></i> افزودن زمان</button>
+    </div>
+
+    <div class="az-card p-4 mb-3" hidden="@(tab != "images")">
+        <label class="form-label">تصویر اصلی</label>
+        <ImageUpload @bind-Value="model.CoverImagePath" Folder="courses" />
+        <h3 class="h6 mt-4">گالری تصاویر</h3>
+        <div class="d-flex flex-wrap gap-3 mb-3">
+            @foreach (var img in model.Images)
+            {
+                <div class="text-center">
+                    <img src="@img.Path" class="upload-thumb d-block mb-1" alt="" />
+                    <InputText class="form-control form-control-sm mb-1" style="width:120px" @bind-Value="img.Caption" placeholder="عنوان" />
+                    <button type="button" class="btn btn-sm btn-link text-danger" @onclick="() => model.Images.Remove(img)">حذف</button>
+                </div>
+            }
+        </div>
+        <ImageUpload Value="@null" ValueChanged="AddGalleryImage" Folder="courses" AllowRemove="false" />
+    </div>
+
+    <div class="az-card p-4 mb-3" hidden="@(tab != "form")">
+        <p class="text-muted small">فیلدهای پایه (نام، موبایل، ایمیل، توضیحات) همیشه در فرم هستند. در صورت نیاز فیلدهای اختصاصی این دوره را اضافه کنید.</p>
+        @foreach (var f in model.Fields)
+        {
+            <div class="border rounded p-3 mb-2">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-4"><InputText class="form-control form-control-sm" @bind-Value="f.Label" placeholder="عنوان فیلد" /></div>
+                    <div class="col-md-3">
+                        <InputSelect class="form-select form-select-sm" @bind-Value="f.FieldType">
+                            @foreach (var t in Enum.GetValues<RegistrationFieldType>()) { <option value="@t">@DisplayNames.Of(t)</option> }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-3"><div class="form-check"><InputCheckbox class="form-check-input" @bind-Value="f.IsRequired" id="@($"req{f.GetHashCode()}")" /><label class="form-check-label" for="@($"req{f.GetHashCode()}")">الزامی</label></div></div>
+                    <div class="col-md-2 text-start"><button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => model.Fields.Remove(f)"><i class="bi bi-trash"></i></button></div>
+                    @if (f.FieldType == RegistrationFieldType.Select)
+                    {
+                        <div class="col-12"><InputTextArea class="form-control form-control-sm" rows="3" @bind-Value="f.Options" placeholder="گزینه‌ها — هر گزینه در یک خط" /></div>
+                    }
+                </div>
+            </div>
+        }
+        <button type="button" class="btn btn-sm btn-light" @onclick="() => model.Fields.Add(new())"><i class="bi bi-plus"></i> افزودن فیلد</button>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary" disabled="@Busy"><i class="bi bi-check2 ms-1"></i> ذخیره</button>
+        <a href="/admin/courses" class="btn btn-light">انصراف</a>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public int? Id { get; set; }
+    private CourseEditModel? model;
+    private List<CategoryOption> categories = [], instructors = [];
+    private string tab = "info";
+    private static readonly (string, string)[] tabs = [("info", "اطلاعات اصلی"), ("sale", "قیمت و ظرفیت"), ("time", "زمان و مکان"), ("images", "تصاویر"), ("form", "فرم ثبت‌نام")];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        categories = await CatalogAdmin.CourseCategoryOptionsAsync();
+        instructors = await CatalogAdmin.InstructorOptionsAsync();
+        model = Id is { } id ? await CatalogAdmin.GetCourseForEditAsync(id) : new CourseEditModel();
+        if (model is null) ShowError("دوره یافت نشد.");
+    }
+
+    private void AddGalleryImage(string? path)
+    {
+        if (path is not null) model!.Images.Add(new ImageEditModel { Path = path });
+    }
+
+    private async Task SaveAsync()
+    {
+        Busy = true;
+        try
+        {
+            var r = await CatalogAdmin.SaveCourseAsync(model!, await GetActorAsync());
+            if (!r.Succeeded) { ShowError(r.Error); return; }
+            ShowOk("دوره ذخیره شد.");
+            if (Id is null) { Nav.NavigateTo($"/admin/courses/{r.Value}"); return; }
+            model = await CatalogAdmin.GetCourseForEditAsync(r.Value);
+        }
+        finally { Busy = false; }
+    }
+}

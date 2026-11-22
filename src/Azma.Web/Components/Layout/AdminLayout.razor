@@ -1,0 +1,55 @@
+@inherits LayoutComponentBase
+
+<input type="checkbox" id="admin-nav-toggle" class="d-none" />
+<div class="admin-shell">
+    <aside class="admin-sidebar" id="admin-sidebar">
+        <a href="/admin" class="brand"><span class="brand-mark"><i class="bi bi-mortarboard"></i></span> <span>پنل مدیریت</span></a>
+        <nav aria-label="منوی مدیریت">
+            <NavLink href="/admin" Match="NavLinkMatch.All"><i class="bi bi-speedometer2"></i> داشبورد</NavLink>
+            <div class="nav-group">فروش</div>
+            <NavLink href="/admin/orders"><i class="bi bi-receipt"></i> سفارش‌ها</NavLink>
+            <NavLink href="/admin/enrollments"><i class="bi bi-people"></i> ثبت‌نام‌ها</NavLink>
+            <NavLink href="/admin/transactions"><i class="bi bi-credit-card"></i> تراکنش‌ها</NavLink>
+            <div class="nav-group">کاتالوگ</div>
+            <NavLink href="/admin/courses"><i class="bi bi-journal-bookmark"></i> دوره‌ها</NavLink>
+            <NavLink href="/admin/products"><i class="bi bi-box-seam"></i> محصولات</NavLink>
+            <NavLink href="/admin/categories"><i class="bi bi-tags"></i> دسته‌بندی‌ها</NavLink>
+            <NavLink href="/admin/instructors"><i class="bi bi-person-video3"></i> مدرسین</NavLink>
+            <div class="nav-group">محتوا</div>
+            <NavLink href="/admin/content"><i class="bi bi-layout-text-window"></i> صفحه اصلی و FAQ</NavLink>
+            <NavLink href="/admin/messages"><i class="bi bi-envelope"></i> پیام‌های تماس</NavLink>
+            <div class="nav-group">سیستم</div>
+            <NavLink href="/admin/settings"><i class="bi bi-gear"></i> تنظیمات سایت</NavLink>
+            <NavLink href="/admin/users"><i class="bi bi-shield-lock"></i> کاربران مدیر</NavLink>
+            <NavLink href="/admin/audit"><i class="bi bi-clock-history"></i> گزارش عملیات</NavLink>
+        </nav>
+    </aside>
+    <label for="admin-nav-toggle" class="admin-backdrop"></label>
+    <div class="admin-main">
+        <div class="admin-topbar">
+            <div class="d-flex align-items-center gap-2">
+                <label for="admin-nav-toggle" class="btn btn-light admin-mobile-toggle" aria-label="منو"><i class="bi bi-list"></i></label>
+                <a href="/" target="_blank" class="btn btn-sm btn-light"><i class="bi bi-box-arrow-up-left ms-1"></i> مشاهده سایت</a>
+            </div>
+            <AuthorizeView>
+                <div class="d-flex align-items-center gap-2 small">
+                    <i class="bi bi-person-circle"></i>
+                    <span class="d-none d-sm-inline">@context.User.Identity?.Name</span>
+                    <a href="/Account/Manage/ChangePassword" class="btn btn-sm btn-light">تغییر رمز</a>
+                    <form action="Account/Logout" method="post" class="m-0">
+                        <AntiforgeryToken />
+                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-box-arrow-left"></i> خروج</button>
+                    </form>
+                </div>
+            </AuthorizeView>
+        </div>
+        <div class="admin-content">
+            @Body
+        </div>
+    </div>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    خطای غیرمنتظره‌ای رخ داد. <a href="." class="reload">بارگذاری مجدد</a>
+    <span class="dismiss">✕</span>
+</div>

@@ -1,0 +1,27 @@
+@switch (State)
+{
+    case RegistrationState.Open:
+        @if (Remaining is { } r && r <= 5)
+        {
+            <span class="chip chip-warning"><i class="bi bi-hourglass-split"></i> فقط @Persian.Digits(r) جای خالی</span>
+        }
+        else
+        {
+            <span class="chip chip-success"><i class="bi bi-check2-circle"></i> ثبت‌نام باز است</span>
+        }
+        break;
+    case RegistrationState.Full:
+        <span class="chip chip-danger"><i class="bi bi-x-circle"></i> ظرفیت تکمیل</span>
+        break;
+    case RegistrationState.NotStarted:
+        <span class="chip chip-primary"><i class="bi bi-clock"></i> به‌زودی</span>
+        break;
+    default:
+        <span class="chip"><i class="bi bi-lock"></i> @DisplayNames.Of(State)</span>
+        break;
+}
+
+@code {
+    [Parameter] public RegistrationState State { get; set; }
+    [Parameter] public int? Remaining { get; set; }
+}

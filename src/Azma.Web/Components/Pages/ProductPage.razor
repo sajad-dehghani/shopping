@@ -1,0 +1,148 @@
+@page "/products/{Slug}"
+@using Azma.Application.Checkout
+@using Azma.Application.Payments
+@inject CatalogService Catalog
+@inject CheckoutService Checkout
+@inject PaymentService Payments
+@inject SiteUrls Urls
+@inject FlashMessages Flash
+@inject NavigationManager Nav
+
+@if (product is null) { return; }
+@{
+    var p = product;
+    var final = p.FinalPrice;
+    var purchasable = p.IsPurchasable();
+}
+
+<PageTitle>@p.Name</PageTitle>
+<HeadContent><meta name="description" content="@p.ShortDescription" /></HeadContent>
+
+<div class="page-header">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">خانه</a></li>
+                <li class="breadcrumb-item"><a href="/products">محصولات</a></li>
+                @if (p.Category is not null) { <li class="breadcrumb-item"><a href="/products?category=@p.Category.Slug">@p.Category.Name</a></li> }
+            </ol>
+        </nav>
+        <h1>@p.Name</h1>
+    </div>
+</div>
+
+<section class="section-sm">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-5">
+                <div class="detail-cover" style="aspect-ratio:1/1"><Thumb Src="@p.ImagePath" Alt="@p.Name" Icon="bi-box-seam" Eager="true" /></div>
+                @if (p.Images.Count > 0)
+                {
+                    <div class="gallery mt-3">
+                        @foreach (var img in p.Images) { <a href="@img.Path" target="_blank"><img src="@img.Path" alt="@p.Name" loading="lazy" /></a> }
+                    </div>
+                }
+            </div>
+            <div class="col-lg-7">
+                <div class="az-card p-4 mb-4">
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <span class="chip">کد محصول: <span class="ltr">@p.Sku</span></span>
+                        <span class="chip">@DisplayNames.Of(p.ProductType)</span>
+                        @if (purchasable) { <span class="chip chip-success">موجود</span> } else { <span class="chip chip-danger">ناموجود</span> }
+                        @if (p.Stock is { } st && st > 0 && st <= 5) { <span class="chip chip-warning">فقط @Persian.Digits(st) عدد باقی مانده</span> }
+                    </div>
+                    @if (!string.IsNullOrEmpty(p.ShortDescription)) { <p class="text-muted">@p.ShortDescription</p> }
+                    <div class="d-flex align-items-end gap-3 mb-1">
+                        <div class="buy-box p-0" style="position:static">
+                            @if (final < p.Price) { <span class="price-old">@Persian.Toman(p.Price)</span> }
+                            <span class="final">@(final == 0 ? "رایگان" : Persian.Toman(final))</span>
+                        </div>
+                        @if (Money.DiscountPercent(p.Price, p.DiscountPrice) is > 0 and var pct) { <span class="discount-badge mb-2">٪@Persian.Digits(pct) تخفیف</span> }
+                    </div>
+                </div>
+
+                @if (purchasable)
+                {
+                    <div class="az-card p-4 mb-4" id="buy">
+                        <h2 class="h5 mb-3">خرید آنلاین</h2>
+                        <EditForm Model="Input" method="post" OnValidSubmit="SubmitAsync" FormName="product-buy">
+                            <DataAnnotationsValidator />
+                            @if (error is not null) { <div class="alert alert-danger">@error</div> }
+                            <ValidationSummary class="validation-errors mb-3" />
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label required" for="fullname">نام و نام خانوادگی</label>
+                                    <InputText id="fullname" class="form-control" @bind-Value="Input.FullName" autocomplete="name" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label required" for="mobile">شماره موبایل</label>
+                                    <InputText id="mobile" type="tel" class="form-control" @bind-Value="Input.Mobile" placeholder="۰۹۱۲۱۲۳۴۵۶۷" autocomplete="tel" inputmode="tel" />
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label" for="email">ایمیل <span class="text-muted fw-normal">(اختیاری)</span></label>
+                                    <InputText id="email" type="email" class="form-control" @bind-Value="Input.Email" autocomplete="email" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label required" for="qty">تعداد</label>
+                                    <InputNumber id="qty" class="form-control" @bind-Value="Input.Quantity" min="1" max="@(Math.Min(20, p.Stock ?? 20))" />
+                                </div>
+                                @if (p.ProductType == ProductType.Physical)
+                                {
+                                    <div class="col-md-8">
+                                        <label class="form-label required" for="address">آدرس ارسال</label>
+                                        <InputTextArea id="address" class="form-control" rows="2" @bind-Value="Input.ShippingAddress" autocomplete="street-address" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label" for="postal">کد پستی</label>
+                                        <InputText id="postal" class="form-control ltr" @bind-Value="Input.PostalCode" inputmode="numeric" autocomplete="postal-code" />
+                                    </div>
+                                }
+                                <div class="col-12">
+                                    <label class="form-label" for="notes">توضیحات <span class="text-muted fw-normal">(اختیاری)</span></label>
+                                    <InputTextArea id="notes" class="form-control" rows="2" @bind-Value="Input.Notes" />
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-success btn-lg w-100 mt-4"><i class="bi bi-bag-check ms-1"></i> خرید و پرداخت</button>
+                            <p class="small text-muted text-center mt-2 mb-0"><i class="bi bi-shield-check"></i> مبلغ نهایی بر اساس تعداد، روی سرور محاسبه و در درگاه زرین‌پال پرداخت می‌شود.</p>
+                        </EditForm>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(p.Description))
+                {
+                    <div class="az-card p-4 content-block">
+                        <h2>توضیحات محصول</h2>
+                        <div class="pre-line">@p.Description</div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter] public string Slug { get; set; } = "";
+    [SupplyParameterFromForm(FormName = "product-buy")] private ProductCheckoutInput Input { get; set; } = default!;
+    private Product? product;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new();
+        product = await Catalog.GetProductAsync(Slug);
+        if (product is null) Nav.NotFound();
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (product is null) return;
+        var created = await Checkout.CreateProductOrderAsync(product.Id, Input);
+        if (!created.Succeeded) { error = created.Error; return; }
+        var order = created.Value!;
+        if (order.IsFree) { Nav.NavigateTo($"/order/{order.OrderPublicId}"); return; }
+        var payment = await Payments.StartPaymentAsync(order.OrderPublicId, Urls.PaymentCallback);
+        if (payment.Succeeded) { Nav.NavigateTo(payment.Value!); return; }
+        Flash.Set(payment.Error!);
+        Nav.NavigateTo($"/order/{order.OrderPublicId}");
+    }
+}

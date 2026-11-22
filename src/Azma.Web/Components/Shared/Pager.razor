@@ -1,0 +1,20 @@
+@inject NavigationManager Nav
+@if (TotalPages > 1)
+{
+    <nav aria-label="صفحه‌بندی" class="mt-4">
+        <ul class="pagination justify-content-center flex-wrap">
+            @for (var i = 1; i <= TotalPages; i++)
+            {
+                var p = i;
+                <li class="page-item @(p == Page ? "active" : null)">
+                    <a class="page-link" href="@Nav.GetUriWithQueryParameter("page", p == 1 ? null : p)">@Persian.Digits(p)</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
+
+@code {
+    [Parameter] public int Page { get; set; }
+    [Parameter] public int TotalPages { get; set; }
+}

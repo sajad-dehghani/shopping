@@ -1,0 +1,49 @@
+@page "/admin/audit"
+@rendermode InteractiveServer
+@using Azma.Domain.Auditing
+@inject ContentAdminService Content
+@inject ISiteClock Clock
+
+<PageTitle>گزارش عملیات</PageTitle>
+<div class="admin-page-title"><h1>گزارش عملیات مدیریتی</h1></div>
+
+<div class="az-card p-3 mb-3">
+    <input class="form-control form-control-sm" placeholder="جست‌وجو در عملیات، کاربر، شناسه یا جزئیات..." @bind="query" @bind:event="oninput" @bind:after="() => LoadAsync(1)" />
+</div>
+<div class="az-card">
+    <div class="table-responsive">
+        <table class="table table-az">
+            <thead><tr><th>زمان</th><th>کاربر</th><th>عملیات</th><th>موجودیت</th><th>جزئیات</th></tr></thead>
+            <tbody>
+                @foreach (var l in logs)
+                {
+                    <tr>
+                        <td class="small text-nowrap">@Persian.ToJalali(Clock.ToLocal(l.CreatedAt), true)</td>
+                        <td class="small">@l.UserName</td>
+                        <td class="small ltr text-end">@l.Action</td>
+                        <td class="small ltr text-end">@l.EntityType #@l.EntityId</td>
+                        <td class="small text-break" style="max-width:420px">@l.Details</td>
+                    </tr>
+                }
+                @if (logs.Count == 0) { <tr><td colspan="5" class="text-center text-muted py-4">موردی یافت نشد.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+</div>
+<AdminPager Page="page" TotalPages="Math.Max(1, (int)Math.Ceiling(total / 30.0))" TotalCount="total" PageChanged="LoadAsync" />
+
+@code {
+    private IReadOnlyList<AdminAuditLog> logs = [];
+    private int total, page = 1;
+    private string? query;
+
+    protected override Task OnInitializedAsync() => LoadAsync(1);
+
+    private async Task LoadAsync(int p)
+    {
+        page = p;
+        var r = await Content.AuditLogsAsync(query, page);
+        logs = r.Items;
+        total = r.TotalCount;
+    }
+}

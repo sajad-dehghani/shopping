@@ -1,0 +1,28 @@
+@if (confirming)
+{
+    <span class="d-inline-flex gap-1">
+        <button type="button" class="btn btn-sm btn-danger" @onclick="ConfirmAsync" disabled="@running">@ConfirmText</button>
+        <button type="button" class="btn btn-sm btn-light" @onclick="() => confirming = false">انصراف</button>
+    </span>
+}
+else
+{
+    <button type="button" class="@CssClass" @onclick="() => confirming = true" title="@Text">@ChildContent</button>
+}
+
+@code {
+    [Parameter] public string Text { get; set; } = "حذف";
+    [Parameter] public string ConfirmText { get; set; } = "تأیید حذف";
+    [Parameter] public string CssClass { get; set; } = "btn btn-sm btn-outline-danger";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    private bool confirming;
+    private bool running;
+
+    private async Task ConfirmAsync()
+    {
+        running = true;
+        try { await OnConfirm.InvokeAsync(); }
+        finally { running = false; confirming = false; }
+    }
+}

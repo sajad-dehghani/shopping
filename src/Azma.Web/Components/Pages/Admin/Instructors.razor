@@ -1,0 +1,80 @@
+@page "/admin/instructors"
+@rendermode InteractiveServer
+@inject ContentAdminService Content
+
+<PageTitle>مدرسین</PageTitle>
+<AdminToast Message="@ToastMessage" IsError="ToastIsError" OnClose="ClearToast" />
+<div class="admin-page-title">
+    <h1>مدرسین و برگزارکنندگان</h1>
+    <button class="btn btn-sm btn-primary" @onclick="() => editing = new Instructor { IsActive = true, ShowOnHomePage = true }"><i class="bi bi-plus-lg ms-1"></i> مدرس جدید</button>
+</div>
+
+@if (editing is not null)
+{
+    <div class="az-card p-4 mb-3">
+        <h2 class="h6">@(editing.Id == 0 ? "مدرس جدید" : "ویرایش مدرس")</h2>
+        <div class="row g-3">
+            <div class="col-md-4"><label class="form-label required">نام و نام خانوادگی</label><input class="form-control" @bind="editing.FullName" maxlength="150" /></div>
+            <div class="col-md-5"><label class="form-label">عنوان / تخصص</label><input class="form-control" @bind="editing.Title" maxlength="200" /></div>
+            <div class="col-md-3"><label class="form-label">ترتیب</label><input type="number" class="form-control" @bind="editing.SortOrder" /></div>
+            <div class="col-md-8"><label class="form-label">بیوگرافی</label><textarea class="form-control" rows="4" @bind="editing.Bio" maxlength="4000"></textarea></div>
+            <div class="col-md-4"><label class="form-label">تصویر</label><ImageUpload @bind-Value="editing.PhotoPath" Folder="instructors" /></div>
+            <div class="col-md-4"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="ia" @bind="editing.IsActive" /><label class="form-check-label" for="ia">فعال</label></div></div>
+            <div class="col-md-4"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="ih" @bind="editing.ShowOnHomePage" /><label class="form-check-label" for="ih">نمایش در صفحه اصلی</label></div></div>
+        </div>
+        <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-primary" @onclick="SaveAsync">ذخیره</button>
+            <button class="btn btn-light" @onclick="() => editing = null">انصراف</button>
+        </div>
+    </div>
+}
+
+<div class="az-card">
+    <div class="table-responsive">
+        <table class="table table-az table-hover">
+            <thead><tr><th></th><th>نام</th><th>عنوان</th><th>وضعیت</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var i in items)
+                {
+                    <tr>
+                        <td style="width:60px">@if (i.PhotoPath is not null) { <img src="@i.PhotoPath" width="40" height="40" class="rounded-circle" style="object-fit:cover" alt="" /> }</td>
+                        <td>@i.FullName</td>
+                        <td class="small">@i.Title</td>
+                        <td>@if (i.IsActive) { <span class="badge bg-success">فعال</span> } else { <span class="badge bg-secondary">غیرفعال</span> }</td>
+                        <td class="text-nowrap">
+                            <button class="btn btn-sm btn-light" @onclick="() => editing = Clone(i)"><i class="bi bi-pencil"></i></button>
+                            <ConfirmButton OnConfirm="() => DeleteAsync(i.Id)"><i class="bi bi-trash"></i></ConfirmButton>
+                        </td>
+                    </tr>
+                }
+                @if (items.Count == 0) { <tr><td colspan="5" class="text-center text-muted py-4">مدرسی ثبت نشده است.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<Instructor> items = [];
+    private Instructor? editing;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+    private async Task LoadAsync() => items = await Content.ListAsync<Instructor>();
+
+    private static Instructor Clone(Instructor i) => new()
+    {
+        Id = i.Id, FullName = i.FullName, Title = i.Title, Bio = i.Bio, PhotoPath = i.PhotoPath, IsActive = i.IsActive,
+        ShowOnHomePage = i.ShowOnHomePage, SortOrder = i.SortOrder, CreatedAt = i.CreatedAt,
+    };
+
+    private async Task SaveAsync()
+    {
+        var r = await Content.SaveAsync(editing!, await GetActorAsync());
+        if (r.Succeeded) { ShowOk("مدرس ذخیره شد."); editing = null; await LoadAsync(); } else ShowError(r.Error);
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        var r = await Content.DeleteAsync<Instructor>(id, await GetActorAsync());
+        if (r.Succeeded) { ShowOk("حذف شد. دوره‌های این مدرس بدون مدرس شدند."); await LoadAsync(); } else ShowError(r.Error);
+    }
+}

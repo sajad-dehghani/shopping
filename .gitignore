@@ -1,0 +1,18 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+.idea/
+*.swp
+TestResults/
+publish/
+
+## Runtime data / secrets
+src/Azma.Web/uploads/
+appsettings.*.local.json
+*.local.json
+.env
+src/Azma.Web/keys/

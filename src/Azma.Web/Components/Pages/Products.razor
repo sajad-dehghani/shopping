@@ -1,0 +1,60 @@
+@page "/products"
+@inject CatalogService Catalog
+
+<PageTitle>محصولات</PageTitle>
+
+<div class="page-header">
+    <div class="container">
+        <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="/">خانه</a></li><li class="breadcrumb-item active">محصولات</li></ol></nav>
+        <h1>محصولات</h1>
+    </div>
+</div>
+
+<section class="section-sm">
+    <div class="container">
+        <form method="get" class="filter-bar mb-4">
+            <div class="row g-2">
+                <div class="col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="search" name="q" value="@Q" class="form-control" placeholder="نام یا کد محصول..." aria-label="جست‌وجو" />
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <select name="category" class="form-select" aria-label="دسته‌بندی">
+                        <option value="">همه دسته‌بندی‌ها</option>
+                        @foreach (var c in categories) { <option value="@c.Slug" selected="@(c.Slug == Category)">@c.Name</option> }
+                    </select>
+                </div>
+                <div class="col-md-3 d-grid"><button class="btn btn-primary" type="submit">جست‌وجو</button></div>
+            </div>
+        </form>
+
+        @if (result is null || result.Items.Count == 0)
+        {
+            <div class="empty-state az-card"><i class="bi bi-box"></i> محصولی یافت نشد.</div>
+        }
+        else
+        {
+            <div class="row g-4">
+                @foreach (var p in result.Items) { <div class="col-6 col-md-4 col-lg-3"><ProductCardView Product="p" /></div> }
+            </div>
+            <Pager Page="result.Page" TotalPages="result.TotalPages" />
+        }
+    </div>
+</section>
+
+@code {
+    [SupplyParameterFromQuery] private string? Q { get; set; }
+    [SupplyParameterFromQuery] private string? Category { get; set; }
+    [SupplyParameterFromQuery] private int? Page { get; set; }
+    private PagedResult<ProductCard>? result;
+    private IReadOnlyList<CategoryOption> categories = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        categories = await Catalog.GetProductCategoriesAsync();
+        var q = Q is { Length: > 100 } ? Q[..100] : Q;
+        result = await Catalog.SearchProductsAsync(new ProductFilter(q, Category, Math.Clamp(Page ?? 1, 1, 1000)));
+    }
+}

@@ -1,0 +1,2 @@
+<span class="badge @(Status switch { PublishStatus.Published => "bg-success", PublishStatus.Draft => "bg-secondary", _ => "bg-dark" })">@DisplayNames.Of(Status)</span>
+@code { [Parameter] public PublishStatus Status { get; set; } }
