@@ -1,0 +1,17 @@
+@page "/terms"
+@inject SiteSettingsService SettingsService
+
+<PageTitle>قوانین و مقررات</PageTitle>
+<div class="page-header"><div class="container"><h1>قوانین و مقررات</h1></div></div>
+<section class="section-sm">
+    <div class="container" style="max-width:860px">
+        <div class="az-card p-4 p-md-5">
+            <div class="pre-line">@(settings?.TermsText ?? "")</div>
+        </div>
+    </div>
+</section>
+
+@code {
+    private SiteSettings? settings;
+    protected override async Task OnInitializedAsync() => settings = await SettingsService.GetAsync();
+}

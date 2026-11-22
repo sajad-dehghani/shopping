@@ -1,0 +1,117 @@
+@page "/order/{PublicId:guid}"
+@using Azma.Application.Checkout
+@inject CheckoutService Checkout
+@inject SiteSettingsService SettingsService
+@inject FlashMessages Flash
+@inject NavigationManager Nav
+
+<PageTitle>وضعیت سفارش</PageTitle>
+<HeadContent><meta name="robots" content="noindex" /></HeadContent>
+
+@if (order is null) { return; }
+@{
+    var lastTx = order.Transactions.FirstOrDefault();
+    var isCourse = order.Items.Any(i => i.ItemType == OrderItemType.Course);
+}
+
+<section class="section-sm">
+    <div class="container" style="max-width:760px">
+        @if (flash is not null)
+        {
+            <div class="alert alert-warning"><i class="bi bi-info-circle ms-1"></i> @flash</div>
+        }
+
+        <div class="az-card p-4 p-md-5 text-center">
+            @switch (order.Status)
+            {
+                case OrderStatus.Paid:
+                    <div class="result-icon result-success"><i class="bi bi-check-lg"></i></div>
+                    <h1 class="h3">@(isCourse ? "ثبت‌نام شما با موفقیت انجام شد" : "خرید شما با موفقیت انجام شد")</h1>
+                    <p class="text-muted">از اعتماد شما سپاسگزاریم. کد پیگیری را برای مراجعات بعدی نگه دارید.</p>
+                    <div class="my-3">
+                        <div class="small text-muted mb-1">کد پیگیری</div>
+                        <span class="tracking-code ltr">@Persian.Digits(order.TrackingCode)</span>
+                    </div>
+                    break;
+                case OrderStatus.PaymentUnknown:
+                    <div class="result-icon result-pending"><i class="bi bi-hourglass-split"></i></div>
+                    <h1 class="h3">پرداخت در حال بررسی است</h1>
+                    <p class="text-muted">نتیجه پرداخت هنوز از درگاه دریافت نشده است. اگر مبلغی از حساب شما کسر شده، پس از تأیید، سفارش به صورت خودکار قطعی می‌شود؛ در غیر این صورت مبلغ ظرف ۷۲ ساعت توسط بانک بازگردانده می‌شود.</p>
+                    break;
+                case OrderStatus.Cancelled:
+                    <div class="result-icon result-failed"><i class="bi bi-x-lg"></i></div>
+                    <h1 class="h3">این سفارش لغو شده است</h1>
+                    <p class="text-muted">برای اطلاعات بیشتر با پشتیبانی تماس بگیرید.</p>
+                    break;
+                case OrderStatus.PaymentFailed:
+                    <div class="result-icon result-failed"><i class="bi bi-x-lg"></i></div>
+                    <h1 class="h3">پرداخت ناموفق بود</h1>
+                    <p class="text-muted">@(lastTx?.Status == PaymentStatus.Cancelled ? "پرداخت توسط شما لغو شد." : "پرداخت تأیید نشد.") اگر مبلغی از حساب شما کسر شده باشد، ظرف ۷۲ ساعت توسط بانک بازگردانده می‌شود. می‌توانید دوباره تلاش کنید.</p>
+                    break;
+                default:
+                    <div class="result-icon result-pending"><i class="bi bi-credit-card"></i></div>
+                    <h1 class="h3">در انتظار پرداخت</h1>
+                    <p class="text-muted">سفارش شما ثبت شد و پس از پرداخت موفق قطعی می‌شود.</p>
+                    break;
+            }
+
+            @if (order.CanRetryPayment)
+            {
+                <form method="post" action="/order/@order.PublicId/pay" class="mt-3">
+                    <AntiforgeryToken />
+                    <button type="submit" class="btn btn-success btn-lg px-5">
+                        <i class="bi bi-arrow-repeat ms-1"></i> @(order.Status == OrderStatus.PaymentFailed ? "تلاش مجدد برای پرداخت" : "پرداخت") @Persian.Toman(order.TotalAmount)
+                    </button>
+                </form>
+            }
+        </div>
+
+        <div class="az-card p-4 mt-4">
+            <h2 class="h6 mb-3">جزئیات سفارش</h2>
+            <ul class="info-list">
+                <li><span class="k">شماره سفارش</span><span class="v ltr">@Persian.Digits(order.OrderNumber)</span></li>
+                <li><span class="k">نام</span><span class="v">@order.CustomerName</span></li>
+                <li><span class="k">موبایل</span><span class="v ltr">@Persian.Digits(MaskMobile(order.Mobile))</span></li>
+                @foreach (var item in order.Items)
+                {
+                    <li>
+                        <span class="k">@(item.ItemType == OrderItemType.Course ? "دوره" : "محصول")</span>
+                        <span class="v">
+                            @if (item.Course is not null) { <a href="/courses/@item.Course.Slug">@item.Title</a> }
+                            else if (item.Product is not null) { <a href="/products/@item.Product.Slug">@item.Title</a> }
+                            else { @item.Title }
+                            @if (item.Quantity > 1) { <span class="text-muted"> × @Persian.Digits(item.Quantity)</span> }
+                        </span>
+                    </li>
+                }
+                <li><span class="k">تاریخ ثبت</span><span class="v">@Persian.ToJalali(Clock.ToLocal(order.CreatedAt), true)</span></li>
+                @if (order.PaidAt is { } paid) { <li><span class="k">تاریخ پرداخت</span><span class="v">@Persian.ToJalali(Clock.ToLocal(paid), true)</span></li> }
+                @if (lastTx?.CardPan is { } pan) { <li><span class="k">کارت پرداخت‌کننده</span><span class="v ltr">@pan</span></li> }
+                <li><span class="k fw-bold text-dark">مبلغ</span><span class="v fs-5">@Persian.Toman(order.TotalAmount)</span></li>
+            </ul>
+        </div>
+
+        @if (settings?.SupportMobile is { } support)
+        {
+            <p class="text-center text-muted small mt-4">سؤالی دارید؟ با پشتیبانی تماس بگیرید: <a href="tel:@support" class="ltr">@Persian.Digits(support)</a></p>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public Guid PublicId { get; set; }
+    [Inject] private ISiteClock Clock { get; set; } = default!;
+    private Order? order;
+    private SiteSettings? settings;
+    private string? flash;
+
+    protected override async Task OnInitializedAsync()
+    {
+        flash = Flash.Take();
+        order = await Checkout.GetOrderAsync(PublicId);
+        if (order is null) { Nav.NotFound(); return; }
+        settings = await SettingsService.GetAsync();
+    }
+
+    private static string MaskMobile(string m) => m.Length == 11 ? $"{m[..4]}***{m[^4..]}" : m;
+}

@@ -1,0 +1,22 @@
+<div class="col-sm-6 col-xl-3">
+    @if (Href is not null)
+    {
+        <a href="@Href" class="az-card stat-card text-reset">@Inner</a>
+    }
+    else
+    {
+        <div class="az-card stat-card">@Inner</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public string? Href { get; set; }
+
+    private RenderFragment Inner => @<text>
+        <div class="icon"><i class="bi @Icon"></i></div>
+        <div><div class="label">@Label</div><div class="value">@Value</div></div>
+    </text>;
+}

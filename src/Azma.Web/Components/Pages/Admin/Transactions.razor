@@ -1,0 +1,87 @@
+@page "/admin/transactions"
+@rendermode InteractiveServer
+@using Azma.Application.Payments
+@inject SalesAdminService Sales
+@inject PaymentService Payments
+@inject ISiteClock Clock
+
+<PageTitle>تراکنش‌ها</PageTitle>
+<AdminToast Message="@ToastMessage" IsError="ToastIsError" OnClose="ClearToast" />
+
+<div class="admin-page-title"><h1>تراکنش‌های پرداخت</h1></div>
+
+<div class="az-card p-3 mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-6"><label class="form-label small">جست‌وجو</label><input class="form-control form-control-sm" placeholder="شماره سفارش، موبایل، Authority یا RefID" @bind="filter.Query" @bind:event="oninput" @onkeyup="OnKey" /></div>
+        <div class="col-md-3">
+            <label class="form-label small">وضعیت</label>
+            <select class="form-select form-select-sm" @bind="StatusValue">
+                <option value="">همه</option>
+                @foreach (var s in Enum.GetValues<PaymentStatus>()) { <option value="@((int)s)">@DisplayNames.Of(s)</option> }
+            </select>
+        </div>
+        <div class="col-md-3 d-grid"><button class="btn btn-sm btn-primary" @onclick="SearchAsync"><i class="bi bi-funnel"></i> اعمال</button></div>
+    </div>
+</div>
+
+<div class="az-card">
+    <div class="table-responsive">
+        <table class="table table-az table-hover">
+            <thead><tr><th>#</th><th>سفارش</th><th>مبلغ</th><th>Authority</th><th>RefID</th><th>کد</th><th>وضعیت</th><th>زمان</th><th></th></tr></thead>
+            <tbody>
+                @if (result is not null)
+                {
+                    @foreach (var t in result.Items)
+                    {
+                        <tr>
+                            <td>@t.Id</td>
+                            <td><a href="/admin/orders/@t.OrderId" class="ltr">@t.OrderNumber</a><div class="small text-muted">@t.CustomerName</div></td>
+                            <td class="text-nowrap">@Persian.Toman(t.Amount)</td>
+                            <td class="ltr small text-break" style="max-width:200px">@t.Authority</td>
+                            <td class="ltr">@t.RefId</td>
+                            <td>@t.GatewayCode</td>
+                            <td><PaymentStatusBadge Status="t.Status" /> @if (t.IsSandbox) { <span class="badge bg-light text-dark">تست</span> }</td>
+                            <td class="small text-nowrap">@Persian.ToJalali(Clock.ToLocal(t.CreatedAt), true)</td>
+                            <td>
+                                @if (t.Authority is not null && t.Status is PaymentStatus.Pending or PaymentStatus.Unknown or PaymentStatus.Verifying)
+                                {
+                                    <button class="btn btn-sm btn-outline-primary text-nowrap" disabled="@Busy" @onclick="() => RecheckAsync(t.Id)">استعلام مجدد</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (result.Items.Count == 0) { <tr><td colspan="9" class="text-center text-muted py-4">تراکنشی یافت نشد.</td></tr> }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@if (result is not null) { <AdminPager Page="result.Page" TotalPages="result.TotalPages" TotalCount="result.TotalCount" PageChanged="GoAsync" /> }
+
+@code {
+    private readonly TransactionFilter filter = new();
+    private PagedResult<TransactionRow>? result;
+
+    private string StatusValue
+    {
+        get => filter.Status is { } s ? ((int)s).ToString() : "";
+        set => filter.Status = int.TryParse(value, out var v) && Enum.IsDefined(typeof(PaymentStatus), v) ? (PaymentStatus)v : null;
+    }
+
+    protected override Task OnInitializedAsync() => SearchAsync();
+    private async Task SearchAsync() { filter.Page = 1; result = await Sales.SearchTransactionsAsync(filter); }
+    private async Task GoAsync(int page) { filter.Page = page; result = await Sales.SearchTransactionsAsync(filter); }
+    private async Task OnKey(KeyboardEventArgs e) { if (e.Key == "Enter") await SearchAsync(); }
+
+    private async Task RecheckAsync(int id)
+    {
+        Busy = true;
+        try
+        {
+            var r = await Payments.RecheckAsync(id, await GetActorAsync());
+            if (r.Succeeded) ShowOk($"نتیجه استعلام: {DisplayNames.Of(r.Value!.Status)}"); else ShowError(r.Error);
+            result = await Sales.SearchTransactionsAsync(filter);
+        }
+        finally { Busy = false; }
+    }
+}

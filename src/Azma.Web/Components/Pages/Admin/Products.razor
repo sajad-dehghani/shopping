@@ -1,0 +1,70 @@
+@page "/admin/products"
+@rendermode InteractiveServer
+@inject CatalogAdminService CatalogAdmin
+
+<PageTitle>مدیریت محصولات</PageTitle>
+<AdminToast Message="@ToastMessage" IsError="ToastIsError" OnClose="ClearToast" />
+
+<div class="admin-page-title">
+    <h1>محصولات</h1>
+    <a href="/admin/products/new" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg ms-1"></i> محصول جدید</a>
+</div>
+
+<div class="az-card p-3 mb-3">
+    <div class="row g-2">
+        <div class="col-md-6"><input class="form-control form-control-sm" placeholder="نام یا کد محصول..." @bind="query" @bind:event="oninput" @bind:after="LoadAsync" /></div>
+        <div class="col-md-3">
+            <select class="form-select form-select-sm" @bind="StatusValue" @bind:after="LoadAsync">
+                <option value="">همه وضعیت‌ها</option>
+                @foreach (var s in Enum.GetValues<PublishStatus>()) { <option value="@((int)s)">@DisplayNames.Of(s)</option> }
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="az-card">
+    <div class="table-responsive">
+        <table class="table table-az table-hover">
+            <thead><tr><th>نام</th><th>کد</th><th>نوع</th><th>قیمت</th><th>موجودی</th><th>فروش</th><th>وضعیت</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var p in rows)
+                {
+                    <tr>
+                        <td><a href="/admin/products/@p.Id" class="fw-semibold">@p.Name</a><div class="small text-muted">@p.CategoryName</div></td>
+                        <td class="ltr text-end small">@p.Sku</td>
+                        <td class="small">@DisplayNames.Of(p.ProductType)</td>
+                        <td class="small text-nowrap">@if (p.DiscountPrice is { } d) { <del class="text-muted">@Persian.Digits(p.Price)</del><br />@Persian.Digits(d) } else { @Persian.Digits(p.Price) }</td>
+                        <td class="small">
+                            @(p.Stock is { } s ? Persian.Digits(s) : "نامحدود")
+                            @if (!p.IsAvailable) { <span class="badge bg-danger">ناموجود</span> }
+                        </td>
+                        <td class="small">@Persian.Digits(p.PaidOrders)</td>
+                        <td><PublishBadge Status="p.Status" /></td>
+                        <td class="text-nowrap">
+                            <a href="/admin/products/@p.Id" class="btn btn-sm btn-light"><i class="bi bi-pencil"></i></a>
+                            <a href="/products/@p.Slug" target="_blank" class="btn btn-sm btn-light"><i class="bi bi-eye"></i></a>
+                            <ConfirmButton OnConfirm="() => DeleteAsync(p.Id)"><i class="bi bi-trash"></i></ConfirmButton>
+                        </td>
+                    </tr>
+                }
+                @if (rows.Count == 0) { <tr><td colspan="8" class="text-center text-muted py-4">محصولی یافت نشد.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<ProductListRow> rows = [];
+    private string? query;
+    private PublishStatus? status;
+    private string StatusValue { get => status is { } s ? ((int)s).ToString() : ""; set => status = int.TryParse(value, out var v) ? (PublishStatus)v : null; }
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+    private async Task LoadAsync() => rows = await CatalogAdmin.ListProductsAsync(query, status);
+
+    private async Task DeleteAsync(int id)
+    {
+        var r = await CatalogAdmin.DeleteProductAsync(id, await GetActorAsync());
+        if (r.Succeeded) { ShowOk("محصول حذف شد."); await LoadAsync(); } else ShowError(r.Error);
+    }
+}

@@ -1,0 +1,24 @@
+@if (!string.IsNullOrEmpty(Settings.Address))
+{
+    <div class="contact-item"><i class="bi bi-geo-alt"></i><div><div class="fw-semibold">آدرس</div><div class="text-muted">@Settings.Address</div></div></div>
+}
+@if (!string.IsNullOrEmpty(Settings.Phone))
+{
+    <div class="contact-item"><i class="bi bi-telephone"></i><div><div class="fw-semibold">تلفن</div><a href="tel:@Settings.Phone" class="ltr">@Persian.Digits(Settings.Phone)</a></div></div>
+}
+@if (!string.IsNullOrEmpty(Settings.SupportMobile))
+{
+    <div class="contact-item"><i class="bi bi-phone"></i><div><div class="fw-semibold">موبایل پشتیبانی</div><a href="tel:@Settings.SupportMobile" class="ltr">@Persian.Digits(Settings.SupportMobile)</a></div></div>
+}
+@if (!string.IsNullOrEmpty(Settings.Email))
+{
+    <div class="contact-item"><i class="bi bi-envelope"></i><div><div class="fw-semibold">ایمیل</div><a href="mailto:@Settings.Email">@Settings.Email</a></div></div>
+}
+@if (!string.IsNullOrEmpty(Settings.WorkingHours))
+{
+    <div class="contact-item"><i class="bi bi-clock"></i><div><div class="fw-semibold">ساعات پاسخگویی</div><div class="text-muted">@Settings.WorkingHours</div></div></div>
+}
+
+@code {
+    [Parameter, EditorRequired] public SiteSettings Settings { get; set; } = default!;
+}

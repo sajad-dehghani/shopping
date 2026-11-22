@@ -1,0 +1,187 @@
+@page "/admin/orders/{Id:int}"
+@rendermode InteractiveServer
+@using Azma.Application.Payments
+@inject SalesAdminService Sales
+@inject PaymentService Payments
+@inject ISiteClock Clock
+
+<PageTitle>جزئیات سفارش</PageTitle>
+<AdminToast Message="@ToastMessage" IsError="ToastIsError" OnClose="ClearToast" />
+
+@if (order is null)
+{
+    <p class="text-muted">@(loaded ? "سفارش یافت نشد." : "در حال بارگذاری...")</p>
+    return;
+}
+
+<div class="admin-page-title">
+    <h1>سفارش <span class="ltr">@order.OrderNumber</span> <OrderStatusBadge Status="order.Status" /></h1>
+    <div class="d-flex gap-2">
+        <a href="/order/@order.PublicId" target="_blank" class="btn btn-sm btn-light"><i class="bi bi-box-arrow-up-left"></i> صفحه مشتری</a>
+        <a href="/admin/orders" class="btn btn-sm btn-light">بازگشت</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="az-card p-3 mb-3">
+            <h2 class="h6">اطلاعات مشتری</h2>
+            <ul class="info-list">
+                <li><span class="k">نام</span><span class="v">@order.CustomerName</span></li>
+                <li><span class="k">موبایل</span><span class="v ltr">@order.Mobile</span></li>
+                <li><span class="k">ایمیل</span><span class="v">@(order.Email ?? "—")</span></li>
+                @if (order.ShippingAddress is not null) { <li><span class="k">آدرس ارسال</span><span class="v">@order.ShippingAddress @(order.PostalCode is null ? "" : $"(کد پستی {order.PostalCode})")</span></li> }
+                @if (order.CustomerNote is not null) { <li><span class="k">توضیحات مشتری</span><span class="v pre-line">@order.CustomerNote</span></li> }
+                <li><span class="k">تاریخ ثبت</span><span class="v">@Persian.ToJalali(Clock.ToLocal(order.CreatedAt), true)</span></li>
+                <li><span class="k">تاریخ پرداخت</span><span class="v">@(order.PaidAt is { } p ? Persian.ToJalali(Clock.ToLocal(p), true) : "—")</span></li>
+                <li><span class="k">کد پیگیری</span><span class="v ltr">@(order.TrackingCode ?? "—")</span></li>
+            </ul>
+        </div>
+
+        <div class="az-card mb-3">
+            <h2 class="h6 p-3 m-0 border-bottom">اقلام سفارش</h2>
+            <div class="table-responsive">
+                <table class="table table-az">
+                    <thead><tr><th>عنوان</th><th>قیمت واحد</th><th>تخفیف</th><th>تعداد</th><th>جمع</th></tr></thead>
+                    <tbody>
+                        @foreach (var i in order.Items)
+                        {
+                            <tr>
+                                <td>@i.Title <span class="badge bg-light text-dark">@(i.ItemType == OrderItemType.Course ? "دوره" : "محصول")</span></td>
+                                <td>@Persian.Digits(i.UnitPrice)</td>
+                                <td>@Persian.Digits(i.DiscountPerUnit)</td>
+                                <td>@Persian.Digits(i.Quantity)</td>
+                                <td>@Persian.Digits(i.TotalPrice)</td>
+                            </tr>
+                        }
+                        <tr class="fw-bold"><td colspan="4">مبلغ کل (تومان)</td><td>@Persian.Digits(order.TotalAmount)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @if (order.Enrollments.Count > 0)
+        {
+            <div class="az-card p-3 mb-3">
+                <h2 class="h6">ثبت‌نام‌ها</h2>
+                @foreach (var e in order.Enrollments)
+                {
+                    <div class="border rounded p-2 mb-2">
+                        <div class="d-flex justify-content-between"><strong>@e.Course?.Title</strong><span class="badge @(e.Status == EnrollmentStatus.Confirmed ? "bg-success" : e.Status == EnrollmentStatus.Cancelled ? "bg-secondary" : "bg-warning text-dark")">@DisplayNames.Of(e.Status)</span></div>
+                        @foreach (var f in SalesAdminService.ParseExtraFields(e.ExtraFieldsJson)) { <div class="small"><span class="text-muted">@f.Label:</span> @f.Value</div> }
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="az-card mb-3">
+            <h2 class="h6 p-3 m-0 border-bottom">سوابق تراکنش</h2>
+            <div class="table-responsive">
+                <table class="table table-az">
+                    <thead><tr><th>#</th><th>مبلغ (ریال)</th><th>Authority</th><th>RefID</th><th>کارت</th><th>کد درگاه</th><th>وضعیت</th><th>زمان</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var t in order.Transactions)
+                        {
+                            <tr>
+                                <td>@t.Id</td>
+                                <td>@Persian.Digits(t.GatewayAmount)</td>
+                                <td class="ltr small text-break" style="max-width:180px">@t.Authority</td>
+                                <td class="ltr">@t.RefId</td>
+                                <td class="ltr small">@t.CardPan</td>
+                                <td class="small" title="@t.GatewayMessage">@t.GatewayCode</td>
+                                <td><PaymentStatusBadge Status="t.Status" /> @if (t.IsSandbox) { <span class="badge bg-light text-dark">تست</span> }</td>
+                                <td class="small text-nowrap">@Persian.ToJalali(Clock.ToLocal(t.CreatedAt), true)</td>
+                                <td>
+                                    @if (t.Authority is not null && t.Status is PaymentStatus.Pending or PaymentStatus.Unknown or PaymentStatus.Verifying)
+                                    {
+                                        <button class="btn btn-sm btn-outline-primary text-nowrap" disabled="@Busy" @onclick="() => RecheckAsync(t.Id)"><i class="bi bi-arrow-repeat"></i> استعلام مجدد</button>
+                                    }
+                                </td>
+                            </tr>
+                            @if (!string.IsNullOrEmpty(t.GatewayMessage)) { <tr><td></td><td colspan="8" class="small text-muted pt-0">پیام درگاه: @t.GatewayMessage</td></tr> }
+                        }
+                        @if (order.Transactions.Count == 0) { <tr><td colspan="9" class="text-center text-muted py-3">تراکنشی ثبت نشده است.</td></tr> }
+                    </tbody>
+                </table>
+            </div>
+            <p class="small text-muted px-3">استعلام مجدد، تراکنش را از طریق متد Verify زرین‌پال بررسی می‌کند؛ وضعیت پرداخت فقط با تأیید درگاه تغییر می‌کند.</p>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="az-card p-3 mb-3">
+            <h2 class="h6">یادداشت مدیریتی</h2>
+            <textarea class="form-control mb-2" rows="4" @bind="adminNote" maxlength="2000"></textarea>
+            <button class="btn btn-sm btn-primary" disabled="@Busy" @onclick="SaveNoteAsync">ذخیره یادداشت</button>
+        </div>
+
+        @if (order.Status != OrderStatus.Cancelled)
+        {
+            <div class="az-card p-3 mb-3 border-danger-subtle">
+                <h2 class="h6 text-danger">لغو سفارش</h2>
+                <p class="small text-muted">ثبت‌نام‌های این سفارش لغو می‌شوند@(order.Status == OrderStatus.Paid ? "؛ موجودی محصولات برگشت داده می‌شود. استرداد وجه باید خارج از سیستم انجام شود" : "").</p>
+                <input class="form-control form-control-sm mb-2" placeholder="دلیل لغو (الزامی)" @bind="cancelReason" maxlength="300" />
+                <ConfirmButton Text="لغو سفارش" ConfirmText="تأیید لغو" CssClass="btn btn-sm btn-outline-danger" OnConfirm="CancelAsync">لغو سفارش</ConfirmButton>
+            </div>
+        }
+
+        <div class="az-card p-3">
+            <h2 class="h6">تاریخچه وضعیت</h2>
+            <ul class="list-unstyled small m-0">
+                @foreach (var h in order.StatusHistory)
+                {
+                    <li class="border-bottom py-2">
+                        <div class="d-flex justify-content-between"><OrderStatusBadge Status="h.ToStatus" /><span class="text-muted">@Persian.ToJalali(Clock.ToLocal(h.ChangedAt), true)</span></div>
+                        <div class="mt-1">@h.Reason @if (h.ChangedBy is not null) { <span class="text-muted">— @h.ChangedBy</span> }</div>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private Order? order;
+    private bool loaded;
+    private string? adminNote, cancelReason;
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        order = await Sales.GetOrderAsync(Id);
+        adminNote = order?.AdminNote;
+        loaded = true;
+    }
+
+    private async Task RecheckAsync(int transactionId)
+    {
+        Busy = true;
+        try
+        {
+            var r = await Payments.RecheckAsync(transactionId, await GetActorAsync());
+            if (r.Succeeded) ShowOk($"نتیجه استعلام: {DisplayNames.Of(r.Value!.Status)}"); else ShowError(r.Error);
+            await LoadAsync();
+        }
+        finally { Busy = false; }
+    }
+
+    private async Task SaveNoteAsync()
+    {
+        Busy = true;
+        try
+        {
+            var r = await Sales.SaveAdminNoteAsync(Id, adminNote, await GetActorAsync());
+            if (r.Succeeded) ShowOk("یادداشت ذخیره شد."); else ShowError(r.Error);
+        }
+        finally { Busy = false; }
+    }
+
+    private async Task CancelAsync()
+    {
+        var r = await Sales.CancelOrderAsync(Id, cancelReason ?? "", await GetActorAsync());
+        if (r.Succeeded) { ShowOk("سفارش لغو شد."); cancelReason = null; await LoadAsync(); }
+        else ShowError(r.Error);
+    }
+}

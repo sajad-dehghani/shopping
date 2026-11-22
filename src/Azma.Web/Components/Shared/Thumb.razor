@@ -1,0 +1,17 @@
+@if (!string.IsNullOrEmpty(Src))
+{
+    <img src="@Src" alt="@Alt" loading="@(Eager ? "eager" : "lazy")" decoding="async" width="@Width" height="@Height" />
+}
+else
+{
+    <div class="thumb-fallback" aria-hidden="true"><i class="bi @Icon"></i></div>
+}
+
+@code {
+    [Parameter] public string? Src { get; set; }
+    [Parameter] public string Alt { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "bi-image";
+    [Parameter] public bool Eager { get; set; }
+    [Parameter] public int? Width { get; set; }
+    [Parameter] public int? Height { get; set; }
+}

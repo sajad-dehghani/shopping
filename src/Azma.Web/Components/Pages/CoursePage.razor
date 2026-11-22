@@ -1,0 +1,181 @@
+@page "/courses/{Slug}"
+@inject CatalogService Catalog
+@inject SiteSettingsService SettingsService
+@inject NavigationManager Nav
+
+@if (details is null) { return; }
+@{
+    var c = details.Course;
+    var final = c.FinalPrice;
+}
+
+<PageTitle>@c.Title</PageTitle>
+<HeadContent><meta name="description" content="@c.ShortDescription" /></HeadContent>
+
+<div class="page-header">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">خانه</a></li>
+                <li class="breadcrumb-item"><a href="/courses">دوره‌ها</a></li>
+                @if (c.Category is not null) { <li class="breadcrumb-item"><a href="/courses?category=@c.Category.Slug">@c.Category.Name</a></li> }
+            </ol>
+        </nav>
+        <h1>@c.Title</h1>
+        @if (!string.IsNullOrEmpty(c.ShortDescription)) { <p class="text-muted mt-2 mb-0">@c.ShortDescription</p> }
+        <div class="d-flex flex-wrap gap-2 mt-3">
+            <RegistrationStateChip State="details.State" Remaining="details.RemainingSeats" />
+            <span class="chip"><i class="bi bi-display"></i> @DisplayNames.Of(c.DeliveryMode)</span>
+            @if (c.Instructor is not null) { <span class="chip"><i class="bi bi-person"></i> @c.Instructor.FullName</span> }
+        </div>
+    </div>
+</div>
+
+<section class="section-sm pb-5 mb-5 mb-lg-0">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="detail-cover mb-3"><Thumb Src="@c.CoverImagePath" Alt="@c.Title" Icon="bi-journal-bookmark" Eager="true" Width="1200" Height="675" /></div>
+                @if (c.Images.Count > 0)
+                {
+                    <div class="gallery mb-4">
+                        @foreach (var img in c.Images)
+                        {
+                            <a href="@img.Path" target="_blank" title="@img.Caption"><img src="@img.Path" alt="@(img.Caption ?? c.Title)" loading="lazy" /></a>
+                        }
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(c.Description))
+                {
+                    <div class="az-card p-4 mb-4 content-block">
+                        <h2>معرفی دوره</h2>
+                        <div class="pre-line">@c.Description</div>
+                    </div>
+                }
+
+                @if (c.SyllabusItems.Any())
+                {
+                    <div class="az-card p-4 mb-4 content-block">
+                        <h2>سرفصل‌های آموزشی</h2>
+                        <ol class="syllabus">
+                            @foreach (var item in c.SyllabusItems) { <li>@item</li> }
+                        </ol>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(c.Prerequisites))
+                {
+                    <div class="az-card p-4 mb-4 content-block">
+                        <h2>پیش‌نیازها</h2>
+                        <div class="pre-line text-muted">@c.Prerequisites</div>
+                    </div>
+                }
+
+                @if (c.Instructor is not null)
+                {
+                    <div class="az-card p-4 mb-4 content-block">
+                        <h2>مدرس دوره</h2>
+                        <div class="d-flex gap-3 align-items-center">
+                            @if (!string.IsNullOrEmpty(c.Instructor.PhotoPath)) { <img src="@c.Instructor.PhotoPath" alt="@c.Instructor.FullName" width="72" height="72" class="rounded-circle" style="object-fit:cover" loading="lazy" /> }
+                            <div>
+                                <div class="fw-bold">@c.Instructor.FullName</div>
+                                @if (!string.IsNullOrEmpty(c.Instructor.Title)) { <div class="text-muted small">@c.Instructor.Title</div> }
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(c.Instructor.Bio)) { <p class="text-muted mt-3 mb-0 pre-line">@c.Instructor.Bio</p> }
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(c.RegistrationTerms))
+                {
+                    <div class="az-card p-4 mb-4 content-block">
+                        <h2>شرایط ثبت‌نام</h2>
+                        <div class="pre-line text-muted">@c.RegistrationTerms</div>
+                    </div>
+                }
+            </div>
+
+            <div class="col-lg-4">
+                <div class="buy-box">
+                    <div class="az-card p-4 mb-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="text-muted">هزینه دوره</span>
+                            @if (Money.DiscountPercent(c.Price, c.DiscountPrice) is > 0 and var pct) { <span class="discount-badge">٪@Persian.Digits(pct) تخفیف</span> }
+                        </div>
+                        @if (final < c.Price) { <div class="price-old">@Persian.Toman(c.Price)</div> }
+                        <div class="final mb-3">@(final == 0 ? "رایگان" : Persian.Toman(final))</div>
+
+                        @if (c.Capacity is { } cap)
+                        {
+                            var pctUsed = Math.Min(100, details.UsedSeats * 100 / cap);
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span class="text-muted">ظرفیت: @Persian.Digits(cap) نفر</span>
+                                <span class="fw-semibold">@Persian.Digits(details.RemainingSeats ?? 0) جای خالی</span>
+                            </div>
+                            <div class="capacity-bar mb-3"><span style="width:@(pctUsed)%"></span></div>
+                        }
+
+                        @if (details.CanRegister)
+                        {
+                            <a href="/courses/@c.Slug/register" class="btn btn-success btn-lg w-100"><i class="bi bi-credit-card ms-1"></i> ثبت‌نام و پرداخت</a>
+                        }
+                        else
+                        {
+                            <button class="btn btn-light btn-lg w-100" disabled>@DisplayNames.Of(details.State)</button>
+                        }
+                        <p class="small text-muted mt-2 mb-0 text-center"><i class="bi bi-shield-check"></i> پرداخت امن از طریق درگاه زرین‌پال</p>
+                    </div>
+
+                    <div class="az-card p-4">
+                        <ul class="info-list">
+                            @if (c.Instructor is not null) { <li><span class="k"><i class="bi bi-person"></i> مدرس</span><span class="v">@c.Instructor.FullName</span></li> }
+                            @if (!string.IsNullOrEmpty(c.Duration)) { <li><span class="k"><i class="bi bi-hourglass"></i> مدت دوره</span><span class="v">@c.Duration</span></li> }
+                            @if (c.StartDate is not null) { <li><span class="k"><i class="bi bi-calendar-event"></i> تاریخ شروع</span><span class="v">@Persian.ToJalaliLong(c.StartDate)</span></li> }
+                            @if (c.EndDate is not null) { <li><span class="k"><i class="bi bi-calendar-check"></i> تاریخ پایان</span><span class="v">@Persian.ToJalaliLong(c.EndDate)</span></li> }
+                            @if (c.Schedules.Count > 0)
+                            {
+                                <li>
+                                    <span class="k"><i class="bi bi-clock"></i> زمان برگزاری</span>
+                                    <span class="v">
+                                        @foreach (var sc in c.Schedules.OrderBy(x => Array.IndexOf(Persian.WeekDays, x.DayOfWeek)).ThenBy(x => x.StartTime))
+                                        {
+                                            <div>@Persian.DayName(sc.DayOfWeek) @Persian.Digits(sc.StartTime.ToString("HH:mm")) تا @Persian.Digits(sc.EndTime.ToString("HH:mm"))</div>
+                                        }
+                                    </span>
+                                </li>
+                            }
+                            <li><span class="k"><i class="bi bi-display"></i> نوع برگزاری</span><span class="v">@DisplayNames.Of(c.DeliveryMode)</span></li>
+                            @if (!string.IsNullOrEmpty(c.OnlinePlatform) && c.DeliveryMode != DeliveryMode.InPerson) { <li><span class="k"><i class="bi bi-camera-video"></i> بستر آنلاین</span><span class="v">@c.OnlinePlatform</span></li> }
+                            @if (!string.IsNullOrEmpty(c.Location) && c.DeliveryMode != DeliveryMode.Online) { <li><span class="k"><i class="bi bi-geo-alt"></i> محل برگزاری</span><span class="v">@c.Location</span></li> }
+                            @if (c.RegistrationEndsOn is not null) { <li><span class="k"><i class="bi bi-calendar-x"></i> مهلت ثبت‌نام</span><span class="v">@Persian.ToJalaliLong(c.RegistrationEndsOn)</span></li> }
+                            @{ var phone = c.SupportPhone ?? settings?.SupportMobile; }
+                            @if (!string.IsNullOrEmpty(phone)) { <li><span class="k"><i class="bi bi-headset"></i> پشتیبانی</span><span class="v"><a href="tel:@phone" class="ltr">@Persian.Digits(phone)</a></span></li> }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@if (details.CanRegister)
+{
+    <div class="mobile-buy-bar d-lg-none d-flex align-items-center justify-content-between gap-3">
+        <div class="fw-bold">@(final == 0 ? "رایگان" : Persian.Toman(final))</div>
+        <a href="/courses/@c.Slug/register" class="btn btn-success">ثبت‌نام و پرداخت</a>
+    </div>
+}
+
+@code {
+    [Parameter] public string Slug { get; set; } = "";
+    private CourseDetails? details;
+    private SiteSettings? settings;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        details = await Catalog.GetCourseAsync(Slug);
+        if (details is null) { Nav.NotFound(); return; }
+        settings = await SettingsService.GetAsync();
+    }
+}

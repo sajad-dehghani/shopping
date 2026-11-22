@@ -1,0 +1,75 @@
+@page "/admin/courses"
+@rendermode InteractiveServer
+@inject CatalogAdminService CatalogAdmin
+
+<PageTitle>مدیریت دوره‌ها</PageTitle>
+<AdminToast Message="@ToastMessage" IsError="ToastIsError" OnClose="ClearToast" />
+
+<div class="admin-page-title">
+    <h1>دوره‌ها</h1>
+    <a href="/admin/courses/new" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg ms-1"></i> دوره جدید</a>
+</div>
+
+<div class="az-card p-3 mb-3">
+    <div class="row g-2">
+        <div class="col-md-6"><input class="form-control form-control-sm" placeholder="جست‌وجوی عنوان..." @bind="query" @bind:event="oninput" @bind:after="LoadAsync" /></div>
+        <div class="col-md-3">
+            <select class="form-select form-select-sm" @bind="StatusValue" @bind:after="LoadAsync">
+                <option value="">همه وضعیت‌ها</option>
+                @foreach (var s in Enum.GetValues<PublishStatus>()) { <option value="@((int)s)">@DisplayNames.Of(s)</option> }
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="az-card">
+    <div class="table-responsive">
+        <table class="table table-az table-hover">
+            <thead><tr><th>عنوان</th><th>دسته / مدرس</th><th>شروع</th><th>قیمت</th><th>ظرفیت</th><th>وضعیت</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var c in rows)
+                {
+                    <tr>
+                        <td>
+                            <a href="/admin/courses/@c.Id" class="fw-semibold">@c.Title</a>
+                            @if (c.IsFeatured) { <i class="bi bi-star-fill text-warning small" title="ویژه"></i> }
+                        </td>
+                        <td class="small">@c.CategoryName<div class="text-muted">@c.InstructorName</div></td>
+                        <td class="small text-nowrap">@Persian.ToJalali(c.StartDate)</td>
+                        <td class="text-nowrap small">
+                            @if (c.DiscountPrice is { } d) { <del class="text-muted">@Persian.Digits(c.Price)</del><br />@Persian.Digits(d) }
+                            else { @Persian.Digits(c.Price) }
+                        </td>
+                        <td class="small text-nowrap">
+                            <a href="/admin/enrollments?courseId=@c.Id">@Persian.Digits(c.ConfirmedCount) @(c.Capacity is { } cap ? "/ " + Persian.Digits(cap) : "")</a>
+                            @if (c.PendingCount > 0) { <div class="text-muted">+@Persian.Digits(c.PendingCount) در انتظار</div> }
+                        </td>
+                        <td><PublishBadge Status="c.Status" /></td>
+                        <td class="text-nowrap">
+                            <a href="/admin/courses/@c.Id" class="btn btn-sm btn-light"><i class="bi bi-pencil"></i></a>
+                            <a href="/courses/@c.Slug" target="_blank" class="btn btn-sm btn-light"><i class="bi bi-eye"></i></a>
+                            <ConfirmButton OnConfirm="() => DeleteAsync(c.Id)"><i class="bi bi-trash"></i></ConfirmButton>
+                        </td>
+                    </tr>
+                }
+                @if (rows.Count == 0) { <tr><td colspan="7" class="text-center text-muted py-4">دوره‌ای یافت نشد.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<CourseListRow> rows = [];
+    private string? query;
+    private PublishStatus? status;
+    private string StatusValue { get => status is { } s ? ((int)s).ToString() : ""; set => status = int.TryParse(value, out var v) ? (PublishStatus)v : null; }
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+    private async Task LoadAsync() => rows = await CatalogAdmin.ListCoursesAsync(query, status);
+
+    private async Task DeleteAsync(int id)
+    {
+        var r = await CatalogAdmin.DeleteCourseAsync(id, await GetActorAsync());
+        if (r.Succeeded) { ShowOk("دوره حذف شد."); await LoadAsync(); } else ShowError(r.Error);
+    }
+}

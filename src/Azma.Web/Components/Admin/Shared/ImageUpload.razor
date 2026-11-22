@@ -1,0 +1,54 @@
+@inject IFileStorage Files
+@inject ILogger<ImageUpload> Logger
+
+<div class="d-flex align-items-center gap-3 flex-wrap">
+    @if (!string.IsNullOrEmpty(Value))
+    {
+        <img src="@Value" class="upload-thumb" alt="" />
+    }
+    else
+    {
+        <div class="upload-thumb d-grid place-items-center text-muted" style="place-items:center"><i class="bi bi-image fs-4"></i></div>
+    }
+    <div>
+        <label class="btn btn-sm btn-light mb-1">
+            <i class="bi bi-upload ms-1"></i> @(string.IsNullOrEmpty(Value) ? "انتخاب تصویر" : "تغییر تصویر")
+            <InputFile OnChange="UploadAsync" accept=".jpg,.jpeg,.png,.webp" class="d-none" />
+        </label>
+        @if (!string.IsNullOrEmpty(Value) && AllowRemove)
+        {
+            <button type="button" class="btn btn-sm btn-link text-danger" @onclick="() => ValueChanged.InvokeAsync(null)">حذف</button>
+        }
+        <div class="form-text">JPG، PNG یا WebP — حداکثر ۳ مگابایت</div>
+        @if (uploading) { <div class="small text-primary">در حال بارگذاری...</div> }
+        @if (error is not null) { <div class="small text-danger">@error</div> }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string Folder { get; set; } = "site";
+    [Parameter] public bool AllowRemove { get; set; } = true;
+    private bool uploading;
+    private string? error;
+
+    private async Task UploadAsync(InputFileChangeEventArgs e)
+    {
+        error = null;
+        uploading = true;
+        try
+        {
+            await using var stream = e.File.OpenReadStream(maxAllowedSize: 3 * 1024 * 1024);
+            var path = await Files.SaveImageAsync(stream, e.File.Name, Folder);
+            await ValueChanged.InvokeAsync(path);
+        }
+        catch (FileValidationException ex) { error = ex.Message; }
+        catch (IOException ex)
+        {
+            Logger.LogWarning(ex, "Upload failed");
+            error = "حجم فایل بیش از حد مجاز است یا بارگذاری ناقص بود.";
+        }
+        finally { uploading = false; }
+    }
+}

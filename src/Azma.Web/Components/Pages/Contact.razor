@@ -1,0 +1,18 @@
+@page "/contact"
+@inject SiteSettingsService SettingsService
+
+<PageTitle>تماس با ما</PageTitle>
+<div class="page-header"><div class="container"><h1>تماس با ما</h1></div></div>
+<section class="section-sm">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-5"><div class="az-card p-4">@if (settings is not null) { <ContactInfo Settings="settings" /> }</div></div>
+            <div class="col-lg-7"><div class="az-card p-4"><h2 class="h5 mb-3">ارسال پیام</h2><ContactForm /></div></div>
+        </div>
+    </div>
+</section>
+
+@code {
+    private SiteSettings? settings;
+    protected override async Task OnInitializedAsync() => settings = await SettingsService.GetAsync();
+}

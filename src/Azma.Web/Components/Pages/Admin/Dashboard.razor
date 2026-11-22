@@ -1,0 +1,95 @@
+@page "/admin"
+@rendermode InteractiveServer
+@inject DashboardService DashboardSvc
+@inject ISiteClock Clock
+
+<PageTitle>داشبورد مدیریت</PageTitle>
+
+<div class="admin-page-title">
+    <h1>داشبورد</h1>
+    <button class="btn btn-sm btn-light" @onclick="LoadAsync"><i class="bi bi-arrow-clockwise"></i> به‌روزرسانی</button>
+</div>
+
+@if (stats is null)
+{
+    <p class="text-muted">در حال بارگذاری...</p>
+}
+else
+{
+    @if (stats.UnknownPayments > 0)
+    {
+        <div class="alert alert-info d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-exclamation-diamond ms-1"></i> @Persian.Digits(stats.UnknownPayments) سفارش با وضعیت پرداخت نامشخص نیاز به بررسی دارد.</span>
+            <a href="/admin/orders?status=@((int)OrderStatus.PaymentUnknown)" class="btn btn-sm btn-info">بررسی</a>
+        </div>
+    }
+    <div class="row g-3 mb-4">
+        <Stat Icon="bi-people" Label="کل ثبت‌نام‌های قطعی" Value="@Persian.Digits(stats.TotalEnrollments)" Href="/admin/enrollments" />
+        <Stat Icon="bi-person-plus" Label="ثبت‌نام‌های امروز" Value="@Persian.Digits(stats.TodayEnrollments)" Href="/admin/enrollments" />
+        <Stat Icon="bi-journal-bookmark" Label="دوره‌های فعال" Value="@Persian.Digits(stats.ActiveCourses)" Href="/admin/courses" />
+        <Stat Icon="bi-box-seam" Label="محصولات منتشرشده" Value="@Persian.Digits(stats.Products)" Href="/admin/products" />
+        <Stat Icon="bi-check2-circle" Label="سفارش‌های موفق" Value="@Persian.Digits(stats.PaidOrders)" Href="@($"/admin/orders?status={(int)OrderStatus.Paid}")" />
+        <Stat Icon="bi-hourglass-split" Label="در انتظار پرداخت" Value="@Persian.Digits(stats.PendingOrders)" Href="@($"/admin/orders?status={(int)OrderStatus.PendingPayment}")" />
+        <Stat Icon="bi-cash-stack" Label="مجموع پرداخت‌شده" Value="@Persian.Toman(stats.TotalPaidAmount)" />
+        <Stat Icon="bi-calendar-day" Label="پرداختی امروز" Value="@Persian.Toman(stats.TodayPaidAmount)" />
+    </div>
+
+    <div class="row g-3">
+        <div class="col-xl-6">
+            <div class="az-card h-100">
+                <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                    <h2 class="h6 m-0">آخرین ثبت‌نام‌ها</h2>
+                    <a href="/admin/enrollments" class="small">مشاهده همه</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-az table-hover">
+                        <thead><tr><th>نام</th><th>دوره</th><th>تاریخ</th><th>وضعیت</th></tr></thead>
+                        <tbody>
+                            @foreach (var e in stats.LatestEnrollments)
+                            {
+                                <tr>
+                                    <td><a href="/admin/orders/@e.OrderId">@e.FullName</a><div class="small text-muted ltr text-end">@e.Mobile</div></td>
+                                    <td class="small">@e.CourseTitle</td>
+                                    <td class="small text-nowrap">@Persian.ToJalali(Clock.ToLocal(e.CreatedAt), true)</td>
+                                    <td><OrderStatusBadge Status="e.OrderStatus" /></td>
+                                </tr>
+                            }
+                            @if (stats.LatestEnrollments.Count == 0) { <tr><td colspan="4" class="text-center text-muted py-4">هنوز ثبت‌نامی انجام نشده است.</td></tr> }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-6">
+            <div class="az-card h-100">
+                <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                    <h2 class="h6 m-0">آخرین تراکنش‌ها</h2>
+                    <a href="/admin/transactions" class="small">مشاهده همه</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-az table-hover">
+                        <thead><tr><th>سفارش</th><th>مبلغ</th><th>تاریخ</th><th>وضعیت</th></tr></thead>
+                        <tbody>
+                            @foreach (var t in stats.LatestTransactions)
+                            {
+                                <tr>
+                                    <td><a href="/admin/orders/@t.OrderId" class="ltr">@t.OrderNumber</a><div class="small text-muted">@t.CustomerName</div></td>
+                                    <td class="small text-nowrap">@Persian.Toman(t.Amount)</td>
+                                    <td class="small text-nowrap">@Persian.ToJalali(Clock.ToLocal(t.CreatedAt), true)</td>
+                                    <td><PaymentStatusBadge Status="t.Status" /> @if (t.IsSandbox) { <span class="badge bg-light text-dark">تست</span> }</td>
+                                </tr>
+                            }
+                            @if (stats.LatestTransactions.Count == 0) { <tr><td colspan="4" class="text-center text-muted py-4">هنوز تراکنشی ثبت نشده است.</td></tr> }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private DashboardStats? stats;
+    protected override Task OnInitializedAsync() => LoadAsync();
+    private async Task LoadAsync() => stats = await DashboardSvc.GetAsync();
+}

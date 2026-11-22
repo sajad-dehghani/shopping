@@ -1,0 +1,43 @@
+@page "/admin/messages"
+@rendermode InteractiveServer
+@inject ContentAdminService Content
+@inject ISiteClock Clock
+
+<PageTitle>پیام‌های تماس</PageTitle>
+<AdminToast Message="@ToastMessage" IsError="ToastIsError" OnClose="ClearToast" />
+<div class="admin-page-title"><h1>پیام‌های تماس</h1></div>
+
+<div class="az-card">
+    <div class="table-responsive">
+        <table class="table table-az">
+            <thead><tr><th>فرستنده</th><th>پیام</th><th>تاریخ</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var m in items)
+                {
+                    <tr class="@(m.IsRead ? null : "table-warning")">
+                        <td class="text-nowrap">@m.FullName<div class="small ltr text-end"><a href="tel:@m.Mobile">@m.Mobile</a></div>@if (m.Email is not null) { <div class="small">@m.Email</div> }</td>
+                        <td class="pre-line small">@m.Message</td>
+                        <td class="small text-nowrap">@Persian.ToJalali(Clock.ToLocal(m.CreatedAt), true)</td>
+                        <td class="text-nowrap">
+                            <button class="btn btn-sm btn-light" @onclick="() => ToggleAsync(m)">@(m.IsRead ? "خوانده‌نشده" : "خوانده شد")</button>
+                            <ConfirmButton OnConfirm="() => DeleteAsync(m.Id)"><i class="bi bi-trash"></i></ConfirmButton>
+                        </td>
+                    </tr>
+                }
+                @if (items.Count == 0) { <tr><td colspan="4" class="text-center text-muted py-4">پیامی دریافت نشده است.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<ContactMessage> items = [];
+    protected override Task OnInitializedAsync() => LoadAsync();
+    private async Task LoadAsync() => items = await Content.ListAsync<ContactMessage>();
+    private async Task ToggleAsync(ContactMessage m) { await Content.MarkMessageReadAsync(m.Id, !m.IsRead); await LoadAsync(); }
+    private async Task DeleteAsync(int id)
+    {
+        var r = await Content.DeleteAsync<ContactMessage>(id, await GetActorAsync());
+        if (r.Succeeded) await LoadAsync(); else ShowError(r.Error);
+    }
+}

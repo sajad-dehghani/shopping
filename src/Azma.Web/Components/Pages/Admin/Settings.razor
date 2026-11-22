@@ -1,0 +1,110 @@
+@page "/admin/settings"
+@rendermode InteractiveServer
+@using System.Text.Json
+@using Azma.Application.Payments
+@inject SiteSettingsService SettingsService
+@inject IPaymentGateway Gateway
+
+<PageTitle>تنظیمات سایت</PageTitle>
+<AdminToast Message="@ToastMessage" IsError="ToastIsError" OnClose="ClearToast" />
+<div class="admin-page-title"><h1>تنظیمات سایت</h1></div>
+
+@if (model is null) { <p class="text-muted">در حال بارگذاری...</p> return; }
+
+<EditForm Model="model" OnValidSubmit="SaveAsync">
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="az-card p-4 mb-3">
+                <h2 class="h6 mb-3">اطلاعات مجموعه</h2>
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label required">نام مجموعه</label><InputText class="form-control" @bind-Value="model.SiteName" required maxlength="100" /></div>
+                    <div class="col-md-6"><label class="form-label">شعار کوتاه</label><InputText class="form-control" @bind-Value="model.Tagline" maxlength="200" /></div>
+                    <div class="col-12"><label class="form-label">عنوان بخش معرفی (صفحه اصلی)</label><InputText class="form-control" @bind-Value="model.HeroTitle" maxlength="200" /></div>
+                    <div class="col-12"><label class="form-label">متن بخش معرفی</label><InputTextArea class="form-control" rows="3" @bind-Value="model.HeroText" maxlength="1000" /></div>
+                    <div class="col-12"><label class="form-label">متن درباره ما</label><InputTextArea class="form-control" rows="5" @bind-Value="model.AboutText" maxlength="4000" /></div>
+                    <div class="col-12"><label class="form-label">قوانین و مقررات</label><InputTextArea class="form-control" rows="5" @bind-Value="model.TermsText" maxlength="10000" /></div>
+                    <div class="col-12"><label class="form-label">متن فوتر</label><InputText class="form-control" @bind-Value="model.FooterText" maxlength="1000" /></div>
+                </div>
+            </div>
+            <div class="az-card p-4 mb-3">
+                <h2 class="h6 mb-3">اطلاعات تماس</h2>
+                <div class="row g-3">
+                    <div class="col-md-4"><label class="form-label">تلفن</label><InputText class="form-control ltr" @bind-Value="model.Phone" maxlength="30" /></div>
+                    <div class="col-md-4"><label class="form-label">موبایل پشتیبانی</label><InputText class="form-control ltr" @bind-Value="model.SupportMobile" maxlength="30" /></div>
+                    <div class="col-md-4"><label class="form-label">ایمیل</label><InputText type="email" class="form-control" @bind-Value="model.Email" maxlength="150" /></div>
+                    <div class="col-md-8"><label class="form-label">آدرس</label><InputText class="form-control" @bind-Value="model.Address" maxlength="500" /></div>
+                    <div class="col-md-4"><label class="form-label">ساعات پاسخگویی</label><InputText class="form-control" @bind-Value="model.WorkingHours" maxlength="200" /></div>
+                </div>
+            </div>
+            <div class="az-card p-4 mb-3">
+                <h2 class="h6 mb-3">شبکه‌های اجتماعی <span class="form-text">(آدرس کامل https://...)</span></h2>
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label">اینستاگرام</label><InputText class="form-control ltr" @bind-Value="model.Instagram" /></div>
+                    <div class="col-md-6"><label class="form-label">تلگرام</label><InputText class="form-control ltr" @bind-Value="model.Telegram" /></div>
+                    <div class="col-md-6"><label class="form-label">واتس‌اپ</label><InputText class="form-control ltr" @bind-Value="model.WhatsApp" /></div>
+                    <div class="col-md-6"><label class="form-label">لینکدین</label><InputText class="form-control ltr" @bind-Value="model.LinkedIn" /></div>
+                    <div class="col-md-6"><label class="form-label">آپارات</label><InputText class="form-control ltr" @bind-Value="model.Aparat" /></div>
+                    <div class="col-12"><label class="form-label">کد نماد اعتماد (اینماد)</label><InputTextArea class="form-control ltr small" rows="2" @bind-Value="model.EnamadHtmlCode" /><div class="form-text">کد HTML ارائه‌شده توسط enamad.ir — فقط از منبع رسمی کپی کنید.</div></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="az-card p-4 mb-3">
+                <h2 class="h6 mb-3">لوگو و تصویر</h2>
+                <label class="form-label">لوگو</label>
+                <ImageUpload @bind-Value="model.LogoPath" Folder="site" />
+                <label class="form-label mt-3">تصویر بخش معرفی</label>
+                <ImageUpload @bind-Value="model.HeroImagePath" Folder="site" />
+            </div>
+            <div class="az-card p-4 mb-3">
+                <h2 class="h6 mb-3">درگاه پرداخت زرین‌پال</h2>
+                <div class="small mb-3">
+                    <div>مرچنت کد اصلی: @StatusChip(Gateway.IsConfigured(false))</div>
+                    <div>مرچنت کد تست (Sandbox): @StatusChip(Gateway.IsConfigured(true))</div>
+                    <div class="text-muted mt-1">مرچنت کد به دلایل امنیتی در تنظیمات محیط اجرا (متغیر <span class="ltr">ZarinPal__MerchantId</span>) نگهداری می‌شود، نه در دیتابیس.</div>
+                </div>
+                <div class="form-check form-switch mb-2"><InputCheckbox class="form-check-input" id="pe" @bind-Value="model.PaymentEnabled" /><label class="form-check-label" for="pe">پرداخت آنلاین فعال باشد</label></div>
+                <div class="form-check form-switch mb-2"><InputCheckbox class="form-check-input" id="sb" @bind-Value="model.UseSandbox" /><label class="form-check-label" for="sb">حالت آزمایشی (Sandbox)</label></div>
+                @if (!model.UseSandbox && !Gateway.IsConfigured(false)) { <div class="alert alert-warning small py-2">مرچنت کد اصلی تنظیم نشده است؛ پرداخت در حالت عملیاتی کار نخواهد کرد.</div> }
+                @if (model.UseSandbox) { <div class="alert alert-info small py-2">در حالت آزمایشی پرداخت واقعی انجام نمی‌شود. پیش از راه‌اندازی، این گزینه را خاموش کنید.</div> }
+                <label class="form-label mt-2">توضیح تراکنش</label>
+                <InputText class="form-control" @bind-Value="model.PaymentDescription" maxlength="200" />
+                <div class="form-text">{0} با شماره سفارش جایگزین می‌شود.</div>
+                <label class="form-label mt-3">مدت رزرو ظرفیت پرداخت‌نشده (دقیقه)</label>
+                <InputNumber class="form-control" @bind-Value="model.SeatReservationMinutes" min="5" max="1440" />
+            </div>
+            <div class="az-card p-4 mb-3">
+                <h2 class="h6 mb-3">تنظیمات عمومی</h2>
+                <div class="form-check form-switch"><InputCheckbox class="form-check-input" id="si" @bind-Value="model.ShowInstructorsOnHome" /><label class="form-check-label" for="si">نمایش مدرسین در صفحه اصلی</label></div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100" disabled="@Busy"><i class="bi bi-check2 ms-1"></i> ذخیره تنظیمات</button>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    private SiteSettings? model;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Work on a copy: the service returns a cached instance shared by all requests.
+        var cached = await SettingsService.GetAsync();
+        model = JsonSerializer.Deserialize<SiteSettings>(JsonSerializer.Serialize(cached));
+    }
+
+    private static RenderFragment StatusChip(bool ok) => ok
+        ? @<span class="badge bg-success">تنظیم شده</span>
+        : @<span class="badge bg-secondary">تنظیم نشده</span>;
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(model!.SiteName)) { ShowError("نام مجموعه الزامی است."); return; }
+        Busy = true;
+        try
+        {
+            await SettingsService.SaveAsync(model, await GetActorAsync());
+            ShowOk("تنظیمات ذخیره شد.");
+        }
+        finally { Busy = false; }
+    }
+}

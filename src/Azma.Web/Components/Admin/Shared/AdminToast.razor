@@ -1,0 +1,14 @@
+@if (!string.IsNullOrEmpty(Message))
+{
+    <div class="toast-az alert @(IsError ? "alert-danger" : "alert-success") shadow d-flex align-items-start gap-2" role="alert">
+        <i class="bi @(IsError ? "bi-exclamation-circle" : "bi-check-circle")"></i>
+        <div class="flex-grow-1">@Message</div>
+        <button type="button" class="btn-close" aria-label="بستن" @onclick="OnClose"></button>
+    </div>
+}
+
+@code {
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public bool IsError { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+}

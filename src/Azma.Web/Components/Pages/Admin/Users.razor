@@ -1,0 +1,140 @@
+@page "/admin/users"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Identity
+@using Azma.Infrastructure.Identity
+@using Microsoft.EntityFrameworkCore
+@inject IServiceScopeFactory ScopeFactory
+@inject IAuditLogger Audit
+@inject ISiteClock Clock
+
+<PageTitle>کاربران مدیر</PageTitle>
+<AdminToast Message="@ToastMessage" IsError="ToastIsError" OnClose="ClearToast" />
+<div class="admin-page-title"><h1>کاربران پنل مدیریت</h1></div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="az-card">
+            <div class="table-responsive">
+                <table class="table table-az">
+                    <thead><tr><th>نام</th><th>ایمیل</th><th>وضعیت</th><th>تاریخ ایجاد</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var u in users)
+                        {
+                            var locked = u.LockoutEnd is { } le && le > DateTimeOffset.UtcNow;
+                            <tr>
+                                <td>@u.FullName</td>
+                                <td class="ltr text-end">@u.Email</td>
+                                <td>@if (locked) { <span class="badge bg-danger">غیرفعال</span> } else { <span class="badge bg-success">فعال</span> }</td>
+                                <td class="small">@Persian.ToJalali(Clock.ToLocal(u.CreatedAt))</td>
+                                <td class="text-nowrap">
+                                    @if (u.Id != currentUserId)
+                                    {
+                                        <button class="btn btn-sm btn-light" @onclick="() => ToggleLockAsync(u.Id, !locked)">@(locked ? "فعال‌سازی" : "غیرفعال‌سازی")</button>
+                                    }
+                                    <button class="btn btn-sm btn-light" @onclick="() => { resetUserId = u.Id; resetPassword = null; }">تغییر رمز</button>
+                                </td>
+                            </tr>
+                            @if (resetUserId == u.Id)
+                            {
+                                <tr><td colspan="5">
+                                    <div class="d-flex gap-2"><input type="password" class="form-control form-control-sm ltr" placeholder="رمز جدید (حداقل ۸ کاراکتر)" @bind="resetPassword" autocomplete="new-password" />
+                                    <button class="btn btn-sm btn-primary" @onclick="ResetPasswordAsync">ذخیره</button><button class="btn btn-sm btn-light" @onclick="() => resetUserId = null">انصراف</button></div>
+                                </td></tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="az-card p-4">
+            <h2 class="h6 mb-3">افزودن مدیر جدید</h2>
+            <div class="mb-2"><label class="form-label">نام</label><input class="form-control" @bind="newName" maxlength="100" /></div>
+            <div class="mb-2"><label class="form-label">ایمیل</label><input type="email" class="form-control ltr" @bind="newEmail" maxlength="150" /></div>
+            <div class="mb-3"><label class="form-label">رمز عبور</label><input type="password" class="form-control ltr" @bind="newPassword" autocomplete="new-password" /><div class="form-text">حداقل ۸ کاراکتر، شامل عدد و حروف بزرگ و کوچک انگلیسی</div></div>
+            <button class="btn btn-primary w-100" disabled="@Busy" @onclick="CreateAsync">ایجاد کاربر</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<ApplicationUser> users = [];
+    private string? currentUserId;
+    private string? newName, newEmail, newPassword, resetUserId, resetPassword;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUserId = (await GetActorAsync()).UserId;
+        await LoadAsync();
+    }
+
+    // A fresh scope per operation: UserManager/DbContext must not live for the whole circuit.
+    private async Task<T> WithUserManager<T>(Func<UserManager<ApplicationUser>, Task<T>> action)
+    {
+        await using var scope = ScopeFactory.CreateAsyncScope();
+        return await action(scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>());
+    }
+
+    private async Task LoadAsync() =>
+        users = await WithUserManager(async um => (await um.GetUsersInRoleAsync(Roles.Admin)).OrderBy(u => u.CreatedAt).ToList());
+
+    private async Task CreateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(newEmail) || string.IsNullOrWhiteSpace(newPassword)) { ShowError("ایمیل و رمز عبور الزامی است."); return; }
+        Busy = true;
+        try
+        {
+            var email = newEmail.Trim();
+            var error = await WithUserManager(async um =>
+            {
+                var user = new ApplicationUser { UserName = email, Email = email, EmailConfirmed = true, FullName = newName?.Trim(), LockoutEnabled = true };
+                var r = await um.CreateAsync(user, newPassword);
+                if (!r.Succeeded) return string.Join(" ", r.Errors.Select(e => e.Description));
+                await um.AddToRoleAsync(user, Roles.Admin);
+                return null;
+            });
+            if (error is not null) { ShowError(error); return; }
+            await Audit.LogAsync(await GetActorAsync(), "CreateAdminUser", "User", email);
+            ShowOk("کاربر مدیر ایجاد شد.");
+            newName = newEmail = newPassword = null;
+            await LoadAsync();
+        }
+        finally { Busy = false; }
+    }
+
+    private async Task ToggleLockAsync(string userId, bool lockUser)
+    {
+        if (userId == currentUserId) return;
+        await WithUserManager(async um =>
+        {
+            var u = await um.FindByIdAsync(userId);
+            if (u is null) return false;
+            await um.SetLockoutEnabledAsync(u, true);
+            await um.SetLockoutEndDateAsync(u, lockUser ? DateTimeOffset.MaxValue : null);
+            await um.UpdateSecurityStampAsync(u); // sign the user out everywhere
+            return true;
+        });
+        await Audit.LogAsync(await GetActorAsync(), lockUser ? "DisableAdminUser" : "EnableAdminUser", "User", userId);
+        ShowOk(lockUser ? "کاربر غیرفعال شد." : "کاربر فعال شد.");
+        await LoadAsync();
+    }
+
+    private async Task ResetPasswordAsync()
+    {
+        if (resetUserId is null || string.IsNullOrEmpty(resetPassword)) return;
+        var id = resetUserId;
+        var error = await WithUserManager(async um =>
+        {
+            var u = await um.FindByIdAsync(id);
+            if (u is null) return "کاربر یافت نشد.";
+            var token = await um.GeneratePasswordResetTokenAsync(u);
+            var r = await um.ResetPasswordAsync(u, token, resetPassword);
+            return r.Succeeded ? null : string.Join(" ", r.Errors.Select(e => e.Description));
+        });
+        if (error is not null) { ShowError(error); return; }
+        await Audit.LogAsync(await GetActorAsync(), "ResetAdminPassword", "User", id);
+        ShowOk("رمز عبور تغییر کرد.");
+        resetUserId = resetPassword = null;
+    }
+}
