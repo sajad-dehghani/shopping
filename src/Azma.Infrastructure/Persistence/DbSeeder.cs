@@ -5,6 +5,7 @@ using Azma.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Azma.Infrastructure.Persistence;
@@ -18,6 +19,7 @@ public sealed class DbSeeder(
     UserManager<ApplicationUser> userManager,
     RoleManager<IdentityRole> roleManager,
     IConfiguration configuration,
+    IHostEnvironment environment,
     ILogger<DbSeeder> logger)
 {
     public async Task SeedAsync(CancellationToken ct = default)
@@ -46,6 +48,9 @@ public sealed class DbSeeder(
         }
     }
 
+    public const string DevAdminEmail = "admin@example.com";
+    public const string DevAdminPassword = "Admin@12345";
+
     private async Task SeedAdminAsync()
     {
         var admins = await userManager.GetUsersInRoleAsync(Roles.Admin);
@@ -55,23 +60,51 @@ public sealed class DbSeeder(
         var password = configuration["AdminSeed:Password"];
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
-            logger.LogWarning("No admin user exists. Set AdminSeed:Email and AdminSeed:Password (environment variables or user-secrets) and restart to create one.");
-            return;
+            if (!environment.IsDevelopment())
+            {
+                logger.LogWarning(
+                    "No admin user exists. Create one with: dotnet Azma.Web.dll admin <email> <password> " +
+                    "(or set AdminSeed__Email and AdminSeed__Password and restart).");
+                return;
+            }
+            // Development only: a well-known default so the panel is reachable right after the first run.
+            email = DevAdminEmail;
+            password = DevAdminPassword;
         }
 
-        var user = await userManager.FindByEmailAsync(email);
+        var result = await EnsureAdminAsync(email, password, resetPassword: false);
+        if (result is null)
+            logger.LogWarning("Admin user {Email} created. Change the password after the first login.", email);
+        else
+            logger.LogError("Could not create admin user {Email}: {Error}", email, result);
+    }
+
+    /// <summary>
+    /// Creates an admin user, or (with <paramref name="resetPassword"/>) resets an existing user's password,
+    /// adds the Admin role and clears any lockout. Returns null on success, otherwise a readable error.
+    /// </summary>
+    public async Task<string?> EnsureAdminAsync(string email, string password, bool resetPassword)
+    {
+        email = email.Trim();
+        var user = await userManager.FindByEmailAsync(email) ?? await userManager.FindByNameAsync(email);
         if (user is null)
         {
             user = new ApplicationUser { UserName = email, Email = email, EmailConfirmed = true, FullName = "مدیر سایت", LockoutEnabled = true };
-            var result = await userManager.CreateAsync(user, password);
-            if (!result.Succeeded)
-            {
-                logger.LogError("Could not create admin user: {Errors}", string.Join("; ", result.Errors.Select(e => e.Description)));
-                return;
-            }
+            var created = await userManager.CreateAsync(user, password);
+            if (!created.Succeeded) return string.Join(" ", created.Errors.Select(e => e.Description));
         }
-        await userManager.AddToRoleAsync(user, Roles.Admin);
-        logger.LogInformation("Admin user {Email} created.", email);
+        else if (resetPassword)
+        {
+            var token = await userManager.GeneratePasswordResetTokenAsync(user);
+            var reset = await userManager.ResetPasswordAsync(user, token, password);
+            if (!reset.Succeeded) return string.Join(" ", reset.Errors.Select(e => e.Description));
+        }
+
+        if (!await userManager.IsInRoleAsync(user, Roles.Admin))
+            await userManager.AddToRoleAsync(user, Roles.Admin);
+        await userManager.SetLockoutEndDateAsync(user, null);
+        await userManager.ResetAccessFailedCountAsync(user);
+        return null;
     }
 
     private static SiteSettings DefaultSettings() => new()

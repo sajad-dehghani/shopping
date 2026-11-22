@@ -6,12 +6,17 @@
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
 @inject ILogger<Login> Logger
+@inject IWebHostEnvironment Env
 @inject IdentityRedirectManager RedirectManager
 
 <PageTitle>ورود به پنل مدیریت</PageTitle>
 
 <h1 class="h5 mb-4 text-center">ورود به پنل مدیریت</h1>
 <StatusMessage Message="@errorMessage" />
+@if (showDevHint)
+{
+    <div class="alert alert-light border small">محیط توسعه — حساب پیش‌فرض: <span class="ltr">admin@example.com</span> / <span class="ltr">Admin@12345</span></div>
+}
 <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
     <DataAnnotationsValidator />
     <div class="mb-3">
@@ -33,6 +38,7 @@
 
 @code {
     private string? errorMessage;
+    private bool showDevHint;
 
     [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
     [SupplyParameterFromForm] private InputModel Input { get; set; } = default!;
@@ -41,6 +47,8 @@
     protected override async Task OnInitializedAsync()
     {
         Input ??= new();
+        showDevHint = Env.IsDevelopment()
+            && await UserManager.FindByEmailAsync(Azma.Infrastructure.Persistence.DbSeeder.DevAdminEmail) is not null;
         if (HttpMethods.IsGet(HttpContext.Request.Method))
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
     }
@@ -48,10 +56,14 @@
     public async Task LoginUser()
     {
         // Failed attempts count towards lockout (5 attempts -> 15 minutes), and POSTs are rate limited per IP.
-        var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: true);
+        var email = Input.Email.Trim();
+        var account = await UserManager.FindByEmailAsync(email);
+        // Identity signs in by user name; look the account up by email so either works.
+        var userName = account?.UserName ?? email;
+        var result = await SignInManager.PasswordSignInAsync(userName, Input.Password, Input.RememberMe, lockoutOnFailure: true);
         if (result.Succeeded)
         {
-            var user = await UserManager.FindByEmailAsync(Input.Email);
+            var user = account ?? await UserManager.FindByNameAsync(userName);
             if (user is null || !await UserManager.IsInRoleAsync(user, Roles.Admin))
             {
                 await SignInManager.SignOutAsync();
@@ -70,6 +82,8 @@
         {
             Logger.LogWarning("Failed login for {Email}.", Input.Email);
             errorMessage = "Error: ایمیل یا رمز عبور نادرست است.";
+            if (Env.IsDevelopment() && (await UserManager.GetUsersInRoleAsync(Roles.Admin)).Count == 0)
+                errorMessage += " (هیچ کاربر مدیری در دیتابیس وجود ندارد؛ راهنمای README را ببینید.)";
         }
     }
 
