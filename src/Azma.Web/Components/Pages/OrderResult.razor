@@ -8,30 +8,53 @@
 <PageTitle>وضعیت سفارش</PageTitle>
 <HeadContent><meta name="robots" content="noindex" /></HeadContent>
 
-@if (order is null) { return; }
+@if (order is null || settings is null) { return; }
 @{
     var lastTx = order.Transactions.FirstOrDefault();
+    var lastReceipt = order.Receipts.FirstOrDefault();
     var isCourse = order.Items.Any(i => i.ItemType == OrderItemType.Course);
+    var cardEnabled = settings.CardToCardEnabled && !string.IsNullOrWhiteSpace(settings.CardNumber);
+    var canPay = order.CanRetryPayment && order.TotalAmount > 0;
+    var onlineAvailable = settings.PaymentEnabled;
+    var startWithCard = cardEnabled && (string.Equals(Pay, "card", StringComparison.OrdinalIgnoreCase) || !onlineAvailable || lastReceipt?.Status == ReceiptStatus.Rejected);
+    var step = order.Status switch
+    {
+        OrderStatus.Paid => 4,
+        OrderStatus.AwaitingApproval => 3,
+        OrderStatus.Cancelled => 0,
+        _ => 2,
+    };
+    var cardDigits = new string((settings.CardNumber ?? "").Where(char.IsAsciiDigit).ToArray());
 }
 
 <section class="section-sm">
-    <div class="container" style="max-width:760px">
+    <div class="container" style="max-width:820px">
         @if (flash is not null)
         {
-            <div class="alert alert-warning"><i class="bi bi-info-circle ms-1"></i> @flash</div>
+            <div class="alert @(flashOk ? "alert-success" : "alert-warning") d-flex gap-2" role="status">
+                <i class="bi @(flashOk ? "bi-check-circle" : "bi-info-circle")"></i><span>@flash</span>
+            </div>
         }
 
-        <div class="az-card p-4 p-md-5 text-center">
+        <div class="az-card az-card-lg p-4 p-md-5 result-hero">
             @switch (order.Status)
             {
                 case OrderStatus.Paid:
                     <div class="result-icon result-success"><i class="bi bi-check-lg"></i></div>
                     <h1 class="h3">@(isCourse ? "ثبت‌نام شما با موفقیت انجام شد" : "خرید شما با موفقیت انجام شد")</h1>
-                    <p class="text-muted">از اعتماد شما سپاسگزاریم. کد پیگیری را برای مراجعات بعدی نگه دارید.</p>
+                    <p class="text-muted">از اعتماد شما به @settings.SiteName سپاسگزاریم. کد رهگیری را برای پیگیری‌های بعدی نگه دارید.</p>
                     <div class="my-3">
-                        <div class="small text-muted mb-1">کد پیگیری</div>
-                        <span class="tracking-code ltr">@Persian.Digits(order.TrackingCode)</span>
+                        <div class="small text-muted mb-2">کد رهگیری</div>
+                        <div class="tracking-box">
+                            <span class="tracking-code ltr">@Persian.Digits(order.TrackingCode)</span>
+                            <button type="button" class="copy-btn" data-copy="@order.TrackingCode" aria-label="کپی کد رهگیری"><i class="bi bi-copy"></i></button>
+                        </div>
                     </div>
+                    break;
+                case OrderStatus.AwaitingApproval:
+                    <div class="result-icon result-review"><i class="bi bi-receipt-cutoff"></i></div>
+                    <h1 class="h3">رسید شما در حال بررسی است</h1>
+                    <p class="text-muted">رسید کارت به کارت دریافت شد. پس از تطبیق مبلغ و تأیید مدیر فروشگاه، سفارش قطعی و <strong>کد رهگیری</strong> روی همین صفحه نمایش داده می‌شود. این صفحه را ذخیره کنید یا بعداً با شماره سفارش و موبایل از بخش «پیگیری سفارش» وارد شوید.</p>
                     break;
                 case OrderStatus.PaymentUnknown:
                     <div class="result-icon result-pending"><i class="bi bi-hourglass-split"></i></div>
@@ -41,7 +64,7 @@
                 case OrderStatus.Cancelled:
                     <div class="result-icon result-failed"><i class="bi bi-x-lg"></i></div>
                     <h1 class="h3">این سفارش لغو شده است</h1>
-                    <p class="text-muted">برای اطلاعات بیشتر با پشتیبانی تماس بگیرید.</p>
+                    <p class="text-muted">برای اطلاعات بیشتر، تیکت پشتیبانی ثبت کنید.</p>
                     break;
                 case OrderStatus.PaymentFailed:
                     <div class="result-icon result-failed"><i class="bi bi-x-lg"></i></div>
@@ -49,69 +72,199 @@
                     <p class="text-muted">@(lastTx?.Status == PaymentStatus.Cancelled ? "پرداخت توسط شما لغو شد." : "پرداخت تأیید نشد.") اگر مبلغی از حساب شما کسر شده باشد، ظرف ۷۲ ساعت توسط بانک بازگردانده می‌شود. می‌توانید دوباره تلاش کنید.</p>
                     break;
                 default:
-                    <div class="result-icon result-pending"><i class="bi bi-credit-card"></i></div>
-                    <h1 class="h3">در انتظار پرداخت</h1>
-                    <p class="text-muted">سفارش شما ثبت شد و پس از پرداخت موفق قطعی می‌شود.</p>
+                    <div class="result-icon result-pending"><i class="bi bi-wallet2"></i></div>
+                    <h1 class="h3">سفارش ثبت شد؛ پرداخت را تکمیل کنید</h1>
+                    <p class="text-muted">شماره سفارش شما <strong class="ltr">@Persian.Digits(order.OrderNumber)</strong> است. سفارش پس از پرداخت موفق قطعی می‌شود.</p>
                     break;
             }
 
-            @if (order.CanRetryPayment)
+            @if (step > 0)
             {
-                <form method="post" action="/order/@order.PublicId/pay" class="mt-3">
-                    <AntiforgeryToken />
-                    <button type="submit" class="btn btn-success btn-lg px-5">
-                        <i class="bi bi-arrow-repeat ms-1"></i> @(order.Status == OrderStatus.PaymentFailed ? "تلاش مجدد برای پرداخت" : "پرداخت") @Persian.Toman(order.TotalAmount)
-                    </button>
-                </form>
+                <ol class="status-steps" aria-label="مراحل سفارش">
+                    <li class="done"><span class="s-dot"><i class="bi bi-check2"></i></span>ثبت سفارش</li>
+                    <li class="@(step > 2 ? "done" : "current")"><span class="s-dot">@if (step > 2) { <i class="bi bi-check2"></i> } else { <i class="bi bi-wallet2"></i> }</span>پرداخت</li>
+                    <li class="@(step > 3 ? "done" : step == 3 ? "current" : null)"><span class="s-dot">@if (step > 3) { <i class="bi bi-check2"></i> } else { <i class="bi bi-shield-check"></i> }</span>تأیید</li>
+                    <li class="@(step >= 4 ? "done" : null)"><span class="s-dot">@if (step >= 4) { <i class="bi bi-check2"></i> } else { <i class="bi bi-upc"></i> }</span>کد رهگیری</li>
+                </ol>
             }
         </div>
 
-        <div class="az-card p-4 mt-4">
-            <h2 class="h6 mb-3">جزئیات سفارش</h2>
-            <ul class="info-list">
-                <li><span class="k">شماره سفارش</span><span class="v ltr">@Persian.Digits(order.OrderNumber)</span></li>
-                <li><span class="k">نام</span><span class="v">@order.CustomerName</span></li>
-                <li><span class="k">موبایل</span><span class="v ltr">@Persian.Digits(MaskMobile(order.Mobile))</span></li>
-                @foreach (var item in order.Items)
-                {
-                    <li>
-                        <span class="k">@(item.ItemType == OrderItemType.Course ? "دوره" : "محصول")</span>
-                        <span class="v">
-                            @if (item.Course is not null) { <a href="/courses/@item.Course.Slug">@item.Title</a> }
-                            else if (item.Product is not null) { <a href="/products/@item.Product.Slug">@item.Title</a> }
-                            else { @item.Title }
-                            @if (item.Quantity > 1) { <span class="text-muted"> × @Persian.Digits(item.Quantity)</span> }
-                        </span>
-                    </li>
-                }
-                <li><span class="k">تاریخ ثبت</span><span class="v">@Persian.ToJalali(Clock.ToLocal(order.CreatedAt), true)</span></li>
-                @if (order.PaidAt is { } paid) { <li><span class="k">تاریخ پرداخت</span><span class="v">@Persian.ToJalali(Clock.ToLocal(paid), true)</span></li> }
-                @if (lastTx?.CardPan is { } pan) { <li><span class="k">کارت پرداخت‌کننده</span><span class="v ltr">@pan</span></li> }
-                <li><span class="k fw-bold text-dark">مبلغ</span><span class="v fs-5">@Persian.Toman(order.TotalAmount)</span></li>
-            </ul>
-        </div>
-
-        @if (settings?.SupportMobile is { } support)
+        @if (lastReceipt?.Status == ReceiptStatus.Rejected && order.Status == OrderStatus.PendingPayment)
         {
-            <p class="text-center text-muted small mt-4">سؤالی دارید؟ با پشتیبانی تماس بگیرید: <a href="tel:@support" class="ltr">@Persian.Digits(support)</a></p>
+            <div class="alert alert-danger mt-4 d-flex gap-2"><i class="bi bi-exclamation-octagon"></i>
+                <span><strong>رسید قبلی شما تأیید نشد.</strong> دلیل: @lastReceipt.RejectReason — می‌توانید رسید صحیح را دوباره ارسال کنید یا آنلاین پرداخت کنید.</span>
+            </div>
         }
+
+        @if (canPay && (onlineAvailable || cardEnabled))
+        {
+            <div class="az-card az-card-lg p-3 p-md-4 mt-4 position-relative" id="pay">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 px-1">
+                    <h2 class="h5 m-0">انتخاب روش پرداخت</h2>
+                    <span class="amount-pill"><i class="bi bi-cash-stack"></i> @Persian.Toman(order.TotalAmount)</span>
+                </div>
+
+                <input type="radio" name="pay-tab" id="tab-online" class="tab-radio" checked="@(!startWithCard)" disabled="@(!onlineAvailable)" />
+                <input type="radio" name="pay-tab" id="tab-card" class="tab-radio" checked="@startWithCard" disabled="@(!cardEnabled)" />
+                @if (onlineAvailable && cardEnabled)
+                {
+                    <div class="seg-tabs mb-4" role="tablist">
+                        <label for="tab-online"><i class="bi bi-lightning-charge"></i> درگاه آنلاین</label>
+                        <label for="tab-card"><i class="bi bi-credit-card-2-front"></i> کارت به کارت</label>
+                    </div>
+                }
+
+                @if (onlineAvailable)
+                {
+                    <div class="tab-panel panel-online">
+                        <div class="d-flex gap-3 align-items-start mb-3">
+                            <span class="pc-icon d-none d-sm-grid" style="width:48px;height:48px;border-radius:14px;place-items:center;background:var(--az-primary-soft);color:var(--az-primary);font-size:1.3rem;flex-shrink:0"><i class="bi bi-shield-lock"></i></span>
+                            <p class="text-muted m-0">به درگاه امن بانکی (زرین‌پال) منتقل می‌شوید. پس از پرداخت موفق، کد رهگیری <strong>بلافاصله</strong> صادر می‌شود.</p>
+                        </div>
+                        <form method="post" action="/order/@order.PublicId/pay" data-once>
+                            <AntiforgeryToken />
+                            <button type="submit" class="btn btn-gradient btn-lg w-100">
+                                <i class="bi bi-lock"></i> @(order.Status == OrderStatus.PaymentFailed ? "تلاش مجدد برای پرداخت" : "پرداخت آنلاین") @Persian.Toman(order.TotalAmount)
+                            </button>
+                        </form>
+                    </div>
+                }
+
+                @if (cardEnabled)
+                {
+                    <div class="tab-panel panel-card" id="card-payment">
+                        <div class="row g-4 align-items-start">
+                            <div class="col-md-6">
+                                <div class="bank-card">
+                                    <div class="bc-top"><span>@(settings.BankName ?? "کارت مقصد")</span><span>@settings.SiteName</span></div>
+                                    <div class="bc-chip"></div>
+                                    <div class="bc-number">@FormatCard(cardDigits.Length > 0 ? cardDigits : settings.CardNumber!)</div>
+                                    <div class="bc-bottom">
+                                        <div><small>به نام</small>@(settings.CardHolderName ?? "—")</div>
+                                        <button type="button" class="copy-btn" data-copy="@(cardDigits.Length > 0 ? cardDigits : settings.CardNumber)" aria-label="کپی شماره کارت"><i class="bi bi-copy"></i></button>
+                                    </div>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(settings.ShebaNumber))
+                                {
+                                    <div class="d-flex justify-content-between align-items-center gap-2 mt-3 small bg-light rounded-3 p-2 px-3">
+                                        <span class="text-muted">شبا:</span><span class="ltr fw-bold text-truncate">@settings.ShebaNumber</span>
+                                        <button type="button" class="copy-btn" data-copy="@settings.ShebaNumber" aria-label="کپی شماره شبا"><i class="bi bi-copy"></i></button>
+                                    </div>
+                                }
+                                <ol class="small text-muted mt-3 mb-0 ps-3" style="line-height:2.1">
+                                    <li>دقیقاً مبلغ <strong class="text-dark">@Persian.Toman(order.TotalAmount)</strong> را به کارت بالا واریز کنید.</li>
+                                    <li>از رسید انتقال وجه، عکس یا اسکرین‌شات بگیرید.</li>
+                                    <li>فرم روبه‌رو را تکمیل و رسید را ارسال کنید.</li>
+                                </ol>
+                            </div>
+                            <div class="col-md-6">
+                                <form method="post" action="/order/@order.PublicId/receipt" enctype="multipart/form-data" data-once>
+                                    <AntiforgeryToken />
+                                    <div class="mb-3">
+                                        <label class="form-label required" for="r-name">نام و نام خانوادگی واریزکننده</label>
+                                        <input id="r-name" name="FullName" class="form-control" value="@order.CustomerName" required minlength="3" maxlength="100" autocomplete="name" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label required" for="r-mobile">شماره موبایل</label>
+                                        <input id="r-mobile" name="Mobile" type="tel" class="form-control" value="@order.Mobile" required maxlength="20" inputmode="tel" autocomplete="tel" placeholder="۰۹۱۲۱۲۳۴۵۶۷" />
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-5">
+                                            <label class="form-label" for="r-last4">۴ رقم آخر کارت</label>
+                                            <input id="r-last4" name="CardLast4" class="form-control ltr" maxlength="4" inputmode="numeric" pattern="[0-9۰-۹]{4}" />
+                                        </div>
+                                        <div class="col-7">
+                                            <label class="form-label" for="r-ref">شماره پیگیری بانک</label>
+                                            <input id="r-ref" name="BankReference" class="form-control ltr" maxlength="50" inputmode="numeric" />
+                                        </div>
+                                    </div>
+                                    <label class="dropzone mb-3 d-block" for="r-file">
+                                        <input id="r-file" type="file" name="receipt" accept="image/jpeg,image/png,image/webp" required />
+                                        <span class="dz-icon"><i class="bi bi-cloud-arrow-up"></i></span>
+                                        <strong class="d-block text-dark">تصویر رسید را انتخاب کنید</strong>
+                                        <span class="small text-muted d-block">JPG، PNG یا WebP — حداکثر ۶ مگابایت</span>
+                                        <span class="dz-name d-block mt-1"></span>
+                                        <img class="dz-preview" alt="پیش‌نمایش رسید" />
+                                    </label>
+                                    <div class="mb-3">
+                                        <label class="form-label" for="r-note">توضیحات <span class="text-muted fw-normal">(اختیاری)</span></label>
+                                        <textarea id="r-note" name="Note" class="form-control" rows="2" maxlength="500"></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-lg w-100"><i class="bi bi-send-check"></i> ارسال رسید برای تأیید</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="row g-4 mt-0">
+            <div class="col-md-7">
+                <div class="az-card p-4 h-100">
+                    <h2 class="h6 mb-3"><i class="bi bi-receipt ms-1"></i> جزئیات سفارش</h2>
+                    <ul class="info-list">
+                        <li><span class="k">شماره سفارش</span><span class="v ltr">@Persian.Digits(order.OrderNumber) <button type="button" class="copy-btn d-inline-grid align-middle" style="width:30px;height:30px" data-copy="@order.OrderNumber" aria-label="کپی شماره سفارش"><i class="bi bi-copy small"></i></button></span></li>
+                        <li><span class="k">وضعیت</span><span class="v"><span class="badge @DisplayNames.BadgeClass(order.Status)">@DisplayNames.Of(order.Status)</span></span></li>
+                        <li><span class="k">نام</span><span class="v">@order.CustomerName</span></li>
+                        <li><span class="k">موبایل</span><span class="v ltr">@Persian.Digits(MaskMobile(order.Mobile))</span></li>
+                        @foreach (var item in order.Items)
+                        {
+                            <li>
+                                <span class="k">@(item.ItemType == OrderItemType.Course ? "دوره" : "محصول")</span>
+                                <span class="v">
+                                    @if (item.Course is not null) { <a href="/courses/@item.Course.Slug">@item.Title</a> }
+                                    else if (item.Product is not null) { <a href="/products/@item.Product.Slug">@item.Title</a> }
+                                    else { @item.Title }
+                                    @if (item.Quantity > 1) { <span class="text-muted"> × @Persian.Digits(item.Quantity)</span> }
+                                </span>
+                            </li>
+                        }
+                        <li><span class="k">تاریخ ثبت</span><span class="v">@Persian.ToJalali(Clock.ToLocal(order.CreatedAt), true)</span></li>
+                        @if (order.PaidAt is { } paid) { <li><span class="k">تاریخ پرداخت</span><span class="v">@Persian.ToJalali(Clock.ToLocal(paid), true)</span></li> }
+                        @if (order.Status == OrderStatus.Paid && lastTx?.CardPan is { } pan) { <li><span class="k">کارت پرداخت‌کننده</span><span class="v ltr">@pan</span></li> }
+                        @if (lastReceipt is not null) { <li><span class="k">رسید کارت به کارت</span><span class="v"><span class="badge @DisplayNames.BadgeClass(lastReceipt.Status)">@DisplayNames.Of(lastReceipt.Status)</span></span></li> }
+                        <li><span class="k fw-bold text-dark">مبلغ</span><span class="v fs-5">@Persian.Toman(order.TotalAmount)</span></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="az-card p-4 h-100 d-flex flex-column">
+                    <h2 class="h6 mb-2"><i class="bi bi-headset ms-1"></i> نیاز به کمک دارید؟</h2>
+                    <p class="text-muted small">با شماره سفارش@(order.TrackingCode is null ? "" : " یا کد رهگیری") تیکت ثبت کنید؛ پاسخ را با شماره تیکت پیگیری کنید.</p>
+                    <a href="/support?code=@Uri.EscapeDataString(order.TrackingCode ?? order.OrderNumber)" class="btn btn-outline-primary w-100 mt-auto"><i class="bi bi-chat-left-text"></i> ارسال تیکت برای این سفارش</a>
+                    @if (!string.IsNullOrEmpty(settings.SupportMobile))
+                    {
+                        <a href="tel:@settings.SupportMobile" class="btn btn-light w-100 mt-2"><i class="bi bi-telephone"></i> <span class="ltr">@Persian.Digits(settings.SupportMobile)</span></a>
+                    }
+                </div>
+            </div>
+        </div>
     </div>
 </section>
 
 @code {
     [Parameter] public Guid PublicId { get; set; }
+    [SupplyParameterFromQuery(Name = "pay")] private string? Pay { get; set; }
     [Inject] private ISiteClock Clock { get; set; } = default!;
     private Order? order;
     private SiteSettings? settings;
     private string? flash;
+    private bool flashOk;
 
     protected override async Task OnInitializedAsync()
     {
         flash = Flash.Take();
+        if (flash?.StartsWith("ok:", StringComparison.Ordinal) == true) { flash = flash[3..]; flashOk = true; }
         order = await Checkout.GetOrderAsync(PublicId);
         if (order is null) { Nav.NotFound(); return; }
         settings = await SettingsService.GetAsync();
     }
 
     private static string MaskMobile(string m) => m.Length == 11 ? $"{m[..4]}***{m[^4..]}" : m;
+
+    private static string FormatCard(string digits)
+        => digits.Length == 16 && digits.All(char.IsAsciiDigit)
+            ? Persian.Digits($"{digits[..4]} {digits[4..8]} {digits[8..12]} {digits[12..]}")
+            : Persian.Digits(digits);
 }

@@ -23,6 +23,8 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         b.Property(x => x.TrackingCode).HasMaxLength(50);
         b.Property(x => x.AdminNote).HasMaxLength(4000);
         b.Ignore(x => x.CanRetryPayment);
+        b.Ignore(x => x.CanSubmitReceipt);
+        b.HasMany(x => x.Receipts).WithOne(r => r.Order).HasForeignKey(r => r.OrderId).OnDelete(DeleteBehavior.Restrict);
 
         b.HasMany(x => x.Items).WithOne(i => i.Order).HasForeignKey(i => i.OrderId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.Enrollments).WithOne(e => e.Order).HasForeignKey(e => e.OrderId).OnDelete(DeleteBehavior.Cascade);

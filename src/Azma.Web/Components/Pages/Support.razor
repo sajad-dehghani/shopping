@@ -1,0 +1,192 @@
+@page "/support"
+@using System.ComponentModel.DataAnnotations
+@inject TicketService TicketsSvc
+@inject SiteSettingsService SettingsService
+@inject NavigationManager Nav
+
+<PageTitle>پشتیبانی و تیکت</PageTitle>
+
+<div class="page-header">
+    <div class="container">
+        <h1><i class="bi bi-headset ms-1"></i> پشتیبانی و تیکت</h1>
+        <p>با کد رهگیری یا شماره سفارش، تیکت ثبت کنید و پاسخ را با شماره تیکت دنبال کنید.</p>
+    </div>
+</div>
+
+<section class="section-sm">
+    <div class="container" style="max-width:1080px">
+        <div class="support-tiles mb-4">
+            <a href="#new-ticket" class="support-tile"><i class="bi bi-chat-left-text"></i><span>تیکت جدید<small>با کد رهگیری سفارش</small></span></a>
+            <a href="#find-ticket" class="support-tile"><i class="bi bi-search"></i><span>پیگیری تیکت<small>با شماره تیکت و موبایل</small></span></a>
+            <a href="#lost-code" class="support-tile"><i class="bi bi-question-diamond"></i><span>فراموشی کد رهگیری<small>درخواست با شماره موبایل</small></span></a>
+            @if (!string.IsNullOrEmpty(settings?.SupportMobile))
+            {
+                <a href="tel:@settings.SupportMobile" class="support-tile"><i class="bi bi-telephone"></i><span>تماس تلفنی<small class="ltr text-end">@Persian.Digits(settings.SupportMobile)</small></span></a>
+            }
+            else
+            {
+                <a href="/order/track" class="support-tile"><i class="bi bi-upc-scan"></i><span>پیگیری سفارش<small>وضعیت پرداخت و کد رهگیری</small></span></a>
+            }
+        </div>
+
+        <div class="row g-4 align-items-start">
+            <div class="col-lg-7" id="new-ticket">
+                <div class="az-card az-card-lg p-4 p-md-5">
+                    <h2 class="h5 mb-1">ثبت تیکت جدید</h2>
+                    <p class="text-muted small mb-4">کد رهگیری (یا شماره سفارش) و شماره موبایلی را که هنگام خرید وارد کرده‌اید بنویسید. کد را فراموش کرده‌اید؟ <a href="#lost-code">اینجا درخواست دهید</a>.</p>
+                    <EditForm Model="NewTicket" method="post" OnValidSubmit="CreateAsync" FormName="new-ticket" data-once>
+                        <DataAnnotationsValidator />
+                        @if (createError is not null) { <div class="alert alert-danger d-flex gap-2"><i class="bi bi-exclamation-circle"></i> @createError</div> }
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label required" for="t-code">کد رهگیری یا شماره سفارش</label>
+                                <InputText id="t-code" class="form-control ltr" @bind-Value="NewTicket.Code" autocomplete="off" />
+                                <ValidationMessage For="() => NewTicket.Code" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label required" for="t-mobile">شماره موبایل</label>
+                                <InputText id="t-mobile" type="tel" class="form-control" @bind-Value="NewTicket.Mobile" inputmode="tel" autocomplete="tel" placeholder="۰۹۱۲۱۲۳۴۵۶۷" />
+                                <ValidationMessage For="() => NewTicket.Mobile" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label required" for="t-name">نام و نام خانوادگی</label>
+                                <InputText id="t-name" class="form-control" @bind-Value="NewTicket.FullName" autocomplete="name" />
+                                <ValidationMessage For="() => NewTicket.FullName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label required" for="t-subject">موضوع</label>
+                                <InputSelect id="t-subject" class="form-select" @bind-Value="NewTicket.Subject">
+                                    <option value="">انتخاب کنید...</option>
+                                    <option>پیگیری وضعیت سفارش</option>
+                                    <option>مشکل در پرداخت</option>
+                                    <option>رسید کارت به کارت</option>
+                                    <option>ارسال و تحویل محصول</option>
+                                    <option>سؤال درباره دوره</option>
+                                    <option>سایر موارد</option>
+                                </InputSelect>
+                                <ValidationMessage For="() => NewTicket.Subject" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label required" for="t-msg">متن پیام</label>
+                                <InputTextArea id="t-msg" class="form-control" rows="5" @bind-Value="NewTicket.Message" maxlength="4000" />
+                                <ValidationMessage For="() => NewTicket.Message" />
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-gradient btn-lg w-100 mt-4"><i class="bi bi-send"></i> ثبت تیکت</button>
+                    </EditForm>
+                </div>
+            </div>
+            <div class="col-lg-5" id="find-ticket">
+                <div class="az-card az-card-lg p-4 p-md-5">
+                    <h2 class="h5 mb-1">پیگیری تیکت</h2>
+                    <p class="text-muted small mb-4">شماره تیکت (مثل <span class="ltr">T123456</span>) و موبایل را وارد کنید.</p>
+                    <EditForm Model="Find" method="post" OnValidSubmit="FindAsync" FormName="find-ticket">
+                        <DataAnnotationsValidator />
+                        @if (notFound) { <div class="alert alert-warning">تیکتی با این مشخصات یافت نشد.</div> }
+                        <div class="mb-3">
+                            <label class="form-label required" for="f-num">شماره تیکت</label>
+                            <InputText id="f-num" class="form-control ltr" @bind-Value="Find.Number" autocomplete="off" />
+                            <ValidationMessage For="() => Find.Number" />
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label required" for="f-mob">شماره موبایل</label>
+                            <InputText id="f-mob" type="tel" class="form-control" @bind-Value="Find.Mobile" inputmode="tel" autocomplete="tel" />
+                            <ValidationMessage For="() => Find.Mobile" />
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary btn-lg w-100"><i class="bi bi-search"></i> مشاهده تیکت</button>
+                    </EditForm>
+                </div>
+
+                <div class="az-card az-card-lg p-4 p-md-5 mt-4 lost-code" id="lost-code">
+                    <div class="d-flex gap-3 align-items-start mb-3">
+                        <span class="lc-icon"><i class="bi bi-question-diamond"></i></span>
+                        <div>
+                            <h2 class="h5 mb-1">کد رهگیری را فراموش کرده‌اید؟</h2>
+                            <p class="text-muted small mb-0">با شماره موبایلی که هنگام خرید ثبت کرده‌اید درخواست دهید؛ پشتیبانی کد رهگیری را در پاسخ تیکت اعلام می‌کند.</p>
+                        </div>
+                    </div>
+                    <EditForm Model="Lost" method="post" OnValidSubmit="LostAsync" FormName="lost-code" data-once>
+                        <DataAnnotationsValidator />
+                        @if (lostError is not null) { <div class="alert alert-danger small d-flex gap-2"><i class="bi bi-exclamation-circle"></i> @lostError</div> }
+                        <div class="mb-3">
+                            <label class="form-label required" for="l-name">نام و نام خانوادگی خریدار</label>
+                            <InputText id="l-name" class="form-control" @bind-Value="Lost.FullName" autocomplete="name" />
+                            <ValidationMessage For="() => Lost.FullName" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label required" for="l-mob">شماره موبایل ثبت‌شده در خرید</label>
+                            <InputText id="l-mob" type="tel" class="form-control" @bind-Value="Lost.Mobile" inputmode="tel" autocomplete="tel" placeholder="۰۹۱۲۱۲۳۴۵۶۷" />
+                            <ValidationMessage For="() => Lost.Mobile" />
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label required" for="l-msg">نام دوره یا محصول و تاریخ تقریبی خرید</label>
+                            <InputTextArea id="l-msg" class="form-control" rows="3" @bind-Value="Lost.Message" maxlength="1000" placeholder="مثلاً: دوره مقدماتی پایتون، اوایل آبان، کارت به کارت" />
+                            <ValidationMessage For="() => Lost.Message" />
+                        </div>
+                        <button type="submit" class="btn btn-gradient btn-lg w-100"><i class="bi bi-send"></i> ارسال درخواست</button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    [SupplyParameterFromForm(FormName = "new-ticket")] private NewTicketInput NewTicket { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "find-ticket")] private FindInput Find { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "lost-code")] private LostInput Lost { get; set; } = default!;
+    [SupplyParameterFromQuery(Name = "code")] private string? Code { get; set; }
+    private SiteSettings? settings;
+    private string? createError;
+    private bool notFound;
+    private string? lostError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        NewTicket ??= new() { Code = Code?.Trim() ?? "" };
+        Find ??= new();
+        Lost ??= new();
+        settings = await SettingsService.GetAsync();
+    }
+
+    private async Task CreateAsync()
+    {
+        var r = await TicketsSvc.CreateAsync(NewTicket);
+        if (!r.Succeeded) { createError = r.Error; return; }
+        Nav.NavigateTo($"/support/ticket/{r.Value}?new=1");
+    }
+
+    private async Task FindAsync()
+    {
+        var id = await TicketsSvc.FindAsync(Find.Number, Find.Mobile);
+        if (id is null) { notFound = true; return; }
+        Nav.NavigateTo($"/support/ticket/{id}");
+    }
+
+    private async Task LostAsync()
+    {
+        var r = await TicketsSvc.CreateAsync(new NewTicketInput
+        {
+            LostCode = true,
+            FullName = Lost.FullName,
+            Mobile = Lost.Mobile,
+            Subject = TicketService.LostCodeSubject,
+            Message = "درخواست اعلام کد رهگیری.\n" + Lost.Message,
+        });
+        if (!r.Succeeded) { lostError = r.Error; return; }
+        Nav.NavigateTo($"/support/ticket/{r.Value}?new=1");
+    }
+
+    private sealed class LostInput
+    {
+        [Required(ErrorMessage = "نام و نام خانوادگی را وارد کنید."), StringLength(100, MinimumLength = 3, ErrorMessage = "نام باید بین ۳ تا ۱۰۰ حرف باشد.")] public string FullName { get; set; } = "";
+        [Required(ErrorMessage = "شماره موبایل را وارد کنید."), StringLength(20)] public string Mobile { get; set; } = "";
+        [Required(ErrorMessage = "نام دوره یا محصول را بنویسید."), StringLength(1000, MinimumLength = 5, ErrorMessage = "توضیح باید بین ۵ تا ۱۰۰۰ حرف باشد.")] public string Message { get; set; } = "";
+    }
+
+    private sealed class FindInput
+    {
+        [Required(ErrorMessage = "شماره تیکت را وارد کنید."), StringLength(20)] public string Number { get; set; } = "";
+        [Required(ErrorMessage = "شماره موبایل را وارد کنید."), StringLength(20)] public string Mobile { get; set; } = "";
+    }
+}

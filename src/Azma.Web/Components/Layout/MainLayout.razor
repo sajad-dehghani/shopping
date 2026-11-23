@@ -1,7 +1,14 @@
 @inherits LayoutComponentBase
 @inject SiteSettingsService SettingsService
 
-@{ var s = settings ?? new SiteSettings(); }
+@{
+    var s = settings ?? new SiteSettings();
+    // Main call to action follows whichever sections are switched on.
+    var shopUrl = s.ShopEnabled ? "/products" : s.CoursesEnabled ? "/courses" : "/order/track";
+    var shopText = s.ShopEnabled || s.CoursesEnabled ? "شروع خرید" : "پیگیری سفارش";
+}
+
+<a href="#main" class="skip-link">پرش به محتوای اصلی</a>
 
 <div class="site-topbar d-none d-md-block">
     <div class="container d-flex justify-content-between align-items-center py-1">
@@ -12,60 +19,69 @@
             }
             @if (!string.IsNullOrEmpty(s.SupportMobile))
             {
-                <span><i class="bi bi-phone ms-1"></i> پشتیبانی: <a href="tel:@s.SupportMobile" class="ltr">@Persian.Digits(s.SupportMobile)</a></span>
+                <span><i class="bi bi-headset ms-1"></i> پشتیبانی: <a href="tel:@s.SupportMobile" class="ltr">@Persian.Digits(s.SupportMobile)</a></span>
             }
         </div>
-        @if (!string.IsNullOrEmpty(s.WorkingHours))
-        {
-            <span><i class="bi bi-clock ms-1"></i> @s.WorkingHours</span>
-        }
+        <div class="d-flex gap-4">
+            @if (!string.IsNullOrEmpty(s.WorkingHours)) { <span><i class="bi bi-clock ms-1"></i> @s.WorkingHours</span> }
+            <a href="/order/track"><i class="bi bi-search ms-1"></i> پیگیری سفارش</a>
+        </div>
     </div>
 </div>
 
+<input type="checkbox" id="nav-drawer" class="drawer-toggle" aria-hidden="true" tabindex="-1" />
+
 <header class="site-header">
-    <div class="container d-flex align-items-center justify-content-between position-relative">
-        <a href="/" class="brand" aria-label="@s.SiteName">
-            @if (!string.IsNullOrEmpty(s.LogoPath))
-            {
-                <img src="@s.LogoPath" alt="@s.SiteName" />
-            }
-            else
-            {
-                <span class="brand-mark"><i class="bi bi-mortarboard"></i></span>
-            }
-            <span>@s.SiteName</span>
+    <div class="container d-flex align-items-center justify-content-between gap-2">
+        <a href="/" class="brand" aria-label="@s.SiteName - صفحه اصلی">
+            @if (!string.IsNullOrEmpty(s.LogoPath)) { <img src="@s.LogoPath" alt="" /> }
+            else { <BrandMark /> }
+            <span>@s.SiteName<small class="d-none d-sm-block">دوره‌ها و محصولات آموزشی</small></span>
         </a>
 
         <nav class="main-nav d-none d-lg-flex gap-1" aria-label="منوی اصلی">
             <NavLink href="/" Match="NavLinkMatch.All">خانه</NavLink>
-            <NavLink href="/courses">دوره‌ها</NavLink>
-            <NavLink href="/products">محصولات</NavLink>
+            @if (s.CoursesEnabled) { <NavLink href="/courses">دوره‌ها</NavLink> }
+            @if (s.ShopEnabled) { <NavLink href="/products">محصولات</NavLink> }
+            <NavLink href="/order/track">پیگیری سفارش</NavLink>
+            <NavLink href="/support">پشتیبانی</NavLink>
             <NavLink href="/about">درباره ما</NavLink>
-            <NavLink href="/contact">تماس با ما</NavLink>
         </nav>
 
-        <div class="d-none d-lg-block">
-            <a href="/courses" class="btn btn-primary"><i class="bi bi-journal-check ms-1"></i> ثبت‌نام در دوره‌ها</a>
+        <div class="header-actions">
+            <a href="/support" class="icon-btn d-none d-sm-inline-grid d-lg-none" aria-label="پشتیبانی"><i class="bi bi-headset"></i></a>
+            <a href="@shopUrl" class="btn btn-gradient d-none d-lg-inline-flex"><i class="bi bi-bag"></i> @shopText</a>
+            <label for="nav-drawer" class="icon-btn d-lg-none" aria-label="باز کردن منو" role="button" tabindex="0"><i class="bi bi-list"></i></label>
         </div>
-
-        <details class="mobile-nav d-lg-none">
-            <summary class="btn btn-light" aria-label="منو"><i class="bi bi-list fs-5"></i></summary>
-            <div class="mobile-nav-panel">
-                <a href="/">خانه</a>
-                <a href="/courses">دوره‌ها</a>
-                <a href="/products">محصولات</a>
-                <a href="/about">درباره ما</a>
-                <a href="/contact">تماس با ما</a>
-                @if (!string.IsNullOrEmpty(s.SupportMobile))
-                {
-                    <a href="tel:@s.SupportMobile"><i class="bi bi-phone ms-1"></i> پشتیبانی: <span class="ltr">@Persian.Digits(s.SupportMobile)</span></a>
-                }
-            </div>
-        </details>
     </div>
 </header>
 
-<main id="main">
+<label for="nav-drawer" class="drawer-backdrop" aria-hidden="true"></label>
+<aside class="drawer" aria-label="منوی موبایل">
+    <div class="drawer-head">
+        <a href="/" class="brand"><BrandMark Id="d" /> <span>@s.SiteName</span></a>
+        <label for="nav-drawer" class="icon-btn" aria-label="بستن منو" role="button" tabindex="0"><i class="bi bi-x-lg"></i></label>
+    </div>
+    <nav>
+        <NavLink href="/" Match="NavLinkMatch.All"><i class="bi bi-house"></i> خانه</NavLink>
+        @if (s.CoursesEnabled) { <NavLink href="/courses"><i class="bi bi-journal-bookmark"></i> دوره‌ها</NavLink> }
+        @if (s.ShopEnabled) { <NavLink href="/products"><i class="bi bi-box-seam"></i> محصولات</NavLink> }
+        <NavLink href="/order/track"><i class="bi bi-search"></i> پیگیری سفارش</NavLink>
+        <NavLink href="/support"><i class="bi bi-headset"></i> پشتیبانی و تیکت</NavLink>
+        <NavLink href="/about"><i class="bi bi-info-circle"></i> درباره ما</NavLink>
+        <NavLink href="/contact"><i class="bi bi-chat-dots"></i> تماس با ما</NavLink>
+        <NavLink href="/terms"><i class="bi bi-file-earmark-text"></i> قوانین و مقررات</NavLink>
+    </nav>
+    <div class="drawer-foot">
+        @if (!string.IsNullOrEmpty(s.SupportMobile))
+        {
+            <a href="tel:@s.SupportMobile" class="btn btn-light w-100 mb-2"><i class="bi bi-telephone"></i> <span class="ltr">@Persian.Digits(s.SupportMobile)</span></a>
+        }
+        <a href="@shopUrl" class="btn btn-gradient w-100"><i class="bi bi-bag"></i> @shopText</a>
+    </div>
+</aside>
+
+<main id="main" tabindex="-1">
     @Body
 </main>
 
@@ -73,7 +89,7 @@
     <div class="container">
         <div class="row g-4">
             <div class="col-lg-4">
-                <h3>@s.SiteName</h3>
+                <a href="/" class="brand mb-3"><BrandMark Id="f" /> <span>@s.SiteName</span></a>
                 <p class="mb-3">@(s.Tagline ?? s.AboutText)</p>
                 <div class="social">
                     <SocialLink Url="@s.Instagram" Icon="bi-instagram" Title="اینستاگرام" />
@@ -84,19 +100,20 @@
                 </div>
             </div>
             <div class="col-6 col-lg-2">
-                <h3>دسترسی سریع</h3>
+                <h3>فروشگاه</h3>
                 <ul>
-                    <li><a href="/courses">دوره‌ها</a></li>
-                    <li><a href="/products">محصولات</a></li>
+                    @if (s.CoursesEnabled) { <li><a href="/courses">دوره‌ها</a></li> }
+                    @if (s.ShopEnabled) { <li><a href="/products">محصولات</a></li> }
                     <li><a href="/about">درباره ما</a></li>
                     <li><a href="/contact">تماس با ما</a></li>
                 </ul>
             </div>
             <div class="col-6 col-lg-3">
-                <h3>راهنما</h3>
+                <h3>خدمات مشتریان</h3>
                 <ul>
+                    <li><a href="/order/track">پیگیری سفارش با کد رهگیری</a></li>
+                    <li><a href="/support">ثبت و پیگیری تیکت</a></li>
                     <li><a href="/#faq">پرسش‌های متداول</a></li>
-                    <li><a href="/order/track">پیگیری سفارش</a></li>
                     <li><a href="/terms">قوانین و مقررات</a></li>
                 </ul>
             </div>
@@ -115,13 +132,44 @@
         </div>
         <div class="footer-bottom d-flex flex-wrap justify-content-between gap-2">
             <span>© @Persian.Digits(Persian.ToJalali(DateTime.UtcNow)[..4]) @s.SiteName — @(s.FooterText ?? "تمامی حقوق محفوظ است.")</span>
+            <span><i class="bi bi-shield-lock ms-1"></i> پرداخت امن و قابل پیگیری</span>
         </div>
     </div>
 </footer>
 
+<nav class="bottom-nav" aria-label="منوی پایین">
+    <NavLink href="/" Match="NavLinkMatch.All"><i class="bi bi-house"></i> خانه</NavLink>
+    @if (s.CoursesEnabled && s.ShopEnabled)
+    {
+        <NavLink href="/courses"><i class="bi bi-journal-bookmark"></i> دوره‌ها</NavLink>
+        <NavLink href="/products" class="bn-cta"><i class="bi bi-bag"></i> فروشگاه</NavLink>
+        <NavLink href="/order/track"><i class="bi bi-upc-scan"></i> پیگیری</NavLink>
+    }
+    else if (s.CoursesEnabled)
+    {
+        <NavLink href="/order/track"><i class="bi bi-upc-scan"></i> پیگیری</NavLink>
+        <NavLink href="/courses" class="bn-cta"><i class="bi bi-journal-bookmark"></i> دوره‌ها</NavLink>
+        <NavLink href="/about"><i class="bi bi-info-circle"></i> درباره ما</NavLink>
+    }
+    else if (s.ShopEnabled)
+    {
+        <NavLink href="/order/track"><i class="bi bi-upc-scan"></i> پیگیری</NavLink>
+        <NavLink href="/products" class="bn-cta"><i class="bi bi-bag"></i> فروشگاه</NavLink>
+        <NavLink href="/about"><i class="bi bi-info-circle"></i> درباره ما</NavLink>
+    }
+    else
+    {
+        <NavLink href="/order/track" class="bn-cta"><i class="bi bi-upc-scan"></i> پیگیری</NavLink>
+        <NavLink href="/about"><i class="bi bi-info-circle"></i> درباره ما</NavLink>
+    }
+    <NavLink href="/support"><i class="bi bi-headset"></i> پشتیبانی</NavLink>
+</nav>
+
 <div id="blazor-error-ui" data-nosnippet>
-    خطای غیرمنتظره‌ای رخ داد. <a href="." class="reload">بارگذاری مجدد</a>
-    <span class="dismiss">✕</span>
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <span>خطای غیرمنتظره‌ای رخ داد.</span>
+    <a href="." class="reload">بارگذاری مجدد صفحه</a>
+    <button type="button" class="dismiss" aria-label="بستن">✕</button>
 </div>
 
 @code {

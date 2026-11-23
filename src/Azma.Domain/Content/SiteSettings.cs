@@ -35,5 +35,18 @@ public class SiteSettings
     public int SeatReservationMinutes { get; set; } = 30;
     public bool ShowInstructorsOnHome { get; set; } = true;
 
+    // Sections: a disabled section disappears from menus, the home page and its own pages.
+    public bool CoursesEnabled { get; set; } = true;
+    public bool ShopEnabled { get; set; } = true;
+    /// <summary>Seconds each hero slide stays on screen.</summary>
+    public int SliderIntervalSeconds { get; set; } = 6;
+
+    // Card-to-card (bank transfer) payment
+    public bool CardToCardEnabled { get; set; } = true;
+    public string? CardNumber { get; set; }
+    public string? CardHolderName { get; set; }
+    public string? BankName { get; set; }
+    public string? ShebaNumber { get; set; }
+
     public DateTime? UpdatedAt { get; set; }
 }

@@ -26,9 +26,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
+    public DbSet<PaymentReceipt> PaymentReceipts => Set<PaymentReceipt>();
+    public DbSet<Azma.Domain.Support.Ticket> Tickets => Set<Azma.Domain.Support.Ticket>();
+    public DbSet<Azma.Domain.Support.TicketMessage> TicketMessages => Set<Azma.Domain.Support.TicketMessage>();
     public DbSet<SiteSettings> SiteSettings => Set<SiteSettings>();
     public DbSet<FaqItem> FaqItems => Set<FaqItem>();
     public DbSet<FeatureItem> FeatureItems => Set<FeatureItem>();
+    public DbSet<HeroSlide> HeroSlides => Set<HeroSlide>();
     public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
     public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>();
 

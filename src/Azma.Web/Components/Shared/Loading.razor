@@ -1,0 +1,18 @@
+@* Persian loading indicator: spinner + skeleton rows. *@
+<div class="az-loading" role="status" aria-live="polite">
+    <div class="az-loading-head">
+        <span class="az-spinner" aria-hidden="true"></span>
+        <span>@Text</span>
+    </div>
+    @if (Rows > 0)
+    {
+        <div class="az-skeleton" aria-hidden="true">
+            @for (var i = 0; i < Rows; i++) { <span style="--w:@(90 - (i % 3) * 18)%"></span> }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Text { get; set; } = "در حال بارگذاری اطلاعات…";
+    [Parameter] public int Rows { get; set; } = 3;
+}

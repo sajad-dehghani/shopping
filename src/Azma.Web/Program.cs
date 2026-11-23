@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Azma.Application;
+using Azma.Application.Common;
 using Azma.Infrastructure;
 using Azma.Infrastructure.Files;
 using Azma.Infrastructure.Identity;
@@ -15,6 +16,28 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
+
+// Any exception that stops the app during startup is written to logs/startup-error.txt (see StartupLog).
+AppDomain.CurrentDomain.UnhandledException += (_, e) => StartupLog.Write("unhandled", e.ExceptionObject);
+
+// Offline helper (no database needed): dotnet Azma.Web.dll admin-sql <email> <password>
+// Prints a SQL script that creates or resets the admin account, for hosts without a command line.
+if (args.Length > 0 && args[0].Equals("admin-sql", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 3)
+    {
+        Console.Error.WriteLine("Usage: dotnet Azma.Web.dll admin-sql <email> <password>  > create-admin.sql");
+        return 1;
+    }
+    if (AdminSqlScript.Validate(args[1], args[2]) is { } invalid)
+    {
+        Console.Error.WriteLine(invalid);
+        return 1;
+    }
+    Console.OutputEncoding = System.Text.Encoding.UTF8;
+    Console.WriteLine(AdminSqlScript.Build(args[1], args[2]));
+    return 0;
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -110,7 +133,15 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var seeder = scope.ServiceProvider.GetRequiredService<DbSeeder>();
-    await seeder.SeedAsync();
+    try
+    {
+        await seeder.SeedAsync();
+    }
+    catch (Exception ex)
+    {
+        StartupLog.Write("database migration / seed", ex);
+        throw;
+    }
 
     // Admin recovery command: dotnet Azma.Web.dll admin <email> <password>
     // Creates the admin, or resets the password / unlocks an existing one, then exits.
@@ -137,8 +168,34 @@ app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages:
 if (app.Configuration.GetValue("Https:Redirect", true)) app.UseHttpsRedirection();
 app.UseSecurityHeaders();
 
+// Sections switched off in admin settings behave as if they do not exist (404 page).
+app.Use(async (ctx, next) =>
+{
+    var path = ctx.Request.Path;
+    var isCourses = path.StartsWithSegments("/courses");
+    var isShop = path.StartsWithSegments("/products");
+    if (isCourses || isShop)
+    {
+        var s = await ctx.RequestServices.GetRequiredService<SiteSettingsService>().GetAsync(ctx.RequestAborted);
+        if ((isCourses && !s.CoursesEnabled) || (isShop && !s.ShopEnabled))
+        {
+            ctx.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+    }
+    await next();
+});
+
 var uploads = app.Services.GetRequiredService<IOptions<FileStorageOptions>>().Value.UploadsPath;
-Directory.CreateDirectory(uploads);
+try
+{
+    Directory.CreateDirectory(uploads);
+}
+catch (Exception ex)
+{
+    StartupLog.Write("creating the uploads folder", ex);
+    throw;
+}
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploads),
@@ -163,6 +220,7 @@ app.MapRazorComponents<App>()
 app.MapAdditionalIdentityEndpoints();
 app.MapPaymentEndpoints();
 app.MapAdminExportEndpoints();
+app.MapAdminReceiptEndpoints();
 app.MapHealthChecks("/health");
 
 await app.RunAsync();

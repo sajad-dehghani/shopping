@@ -109,7 +109,7 @@ public sealed class DbSeeder(
 
     private static SiteSettings DefaultSettings() => new()
     {
-        SiteName = "آموزشگاه آزما",
+        SiteName = "فروشگاه آزما",
         Tagline = "یادگیری مهارت‌های کاربردی، با برنامه و پشتیبانی",
         HeroTitle = "مهارتی بیاموزید که در کار واقعی به کارتان بیاید",
         HeroText = "دوره‌های حضوری و آنلاین با مدرسین باتجربه، پروژه‌محور و همراه با پشتیبانی. ثبت‌نام و پرداخت آنلاین در چند دقیقه.",
@@ -121,12 +121,12 @@ public sealed class DbSeeder(
         WorkingHours = "شنبه تا چهارشنبه، ۹ تا ۱۸",
         AboutText = "آموزشگاه آزما با هدف آموزش مهارت‌های کاربردی و مورد نیاز بازار کار، دوره‌های تخصصی را با رویکرد پروژه‌محور برگزار می‌کند.",
         FooterText = "تمامی حقوق این وب‌سایت محفوظ است.",
-        TermsText = "۱. ثبت‌نام پس از پرداخت موفق و دریافت کد پیگیری قطعی می‌شود.\n۲. در صورت لغو دوره از سوی آموزشگاه، کل مبلغ بازگردانده می‌شود.\n۳. شرایط انصراف هر دوره در صفحه همان دوره درج شده است.\n۴. اطلاعات شخصی شما فقط برای هماهنگی دوره‌ها استفاده می‌شود.",
         PaymentEnabled = true,
         UseSandbox = true,
         PaymentDescription = "پرداخت سفارش {0}",
         SeatReservationMinutes = 30,
         ShowInstructorsOnHome = true,
+        CardToCardEnabled = true,
     };
 
     private async Task SeedSampleDataAsync(CancellationToken ct)

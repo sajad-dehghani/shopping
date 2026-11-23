@@ -46,6 +46,7 @@ public sealed class SalesAdminService(IAppDbContextFactory dbFactory, ISiteClock
             .Include(o => o.Enrollments).ThenInclude(e => e.Course)
             .Include(o => o.Transactions.OrderByDescending(t => t.Id))
             .Include(o => o.StatusHistory.OrderByDescending(h => h.Id))
+            .Include(o => o.Receipts.OrderByDescending(r => r.Id))
             .AsSplitQuery()
             .FirstOrDefaultAsync(o => o.Id == id, ct);
     }

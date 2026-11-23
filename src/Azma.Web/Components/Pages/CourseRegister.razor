@@ -102,9 +102,11 @@
                                 <div class="alert alert-light border small mt-4 mb-0 pre-line"><strong class="d-block mb-1">شرایط ثبت‌نام</strong>@c.RegistrationTerms</div>
                             }
 
-                            <button type="submit" class="btn btn-success btn-lg w-100 mt-4">
+                            <PaymentMethodPicker Value="@Input.PaymentMethod" Amount="c.FinalPrice" />
+
+                            <button type="submit" class="btn btn-gradient btn-lg w-100 mt-4">
                                 @if (c.FinalPrice == 0) { <span><i class="bi bi-check2-circle ms-1"></i> ثبت‌نام رایگان</span> }
-                                else { <span><i class="bi bi-credit-card ms-1"></i> پرداخت @Persian.Toman(c.FinalPrice)</span> }
+                                else { <span><i class="bi bi-credit-card ms-1"></i> ثبت‌نام و پرداخت @Persian.Toman(c.FinalPrice)</span> }
                             </button>
                             <p class="small text-muted text-center mt-2 mb-0">با ثبت‌نام، شرایط و <a href="/terms" target="_blank">قوانین سایت</a> را می‌پذیرید.</p>
                         </EditForm>
@@ -127,7 +129,7 @@
                         @if (c.FinalPrice < c.Price) { <li><span class="k">تخفیف</span><span class="v text-danger">@Persian.Toman(c.Price - c.FinalPrice)</span></li> }
                         <li><span class="k fw-bold text-dark">مبلغ قابل پرداخت</span><span class="v fs-5">@Persian.Toman(c.FinalPrice)</span></li>
                     </ul>
-                    <p class="small text-muted mt-3 mb-0"><i class="bi bi-lock ms-1"></i> پس از تکمیل فرم به درگاه امن زرین‌پال منتقل می‌شوید. ثبت‌نام شما فقط پس از تأیید پرداخت قطعی می‌شود.</p>
+                    <p class="small text-muted mt-3 mb-0"><i class="bi bi-lock ms-1"></i> بدون نیاز به ثبت‌نام در سایت. پرداخت از طریق درگاه امن یا کارت به کارت؛ ثبت‌نام پس از تأیید پرداخت قطعی و کد رهگیری صادر می‌شود.</p>
                 </div>
             </div>
         </div>
@@ -165,6 +167,11 @@
         if (order.IsFree)
         {
             Nav.NavigateTo($"/order/{order.OrderPublicId}");
+            return;
+        }
+        if (Input.WantsCardToCard)
+        {
+            Nav.NavigateTo($"/order/{order.OrderPublicId}?pay=card#card-payment");
             return;
         }
         var payment = await Payments.StartPaymentAsync(order.OrderPublicId, Urls.PaymentCallback);

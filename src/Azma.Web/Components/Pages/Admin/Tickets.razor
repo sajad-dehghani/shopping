@@ -1,0 +1,71 @@
+@page "/admin/tickets"
+@rendermode InteractiveServer
+@inject TicketService TicketsSvc
+@inject ISiteClock Clock
+
+<PageTitle>تیکت‌های پشتیبانی</PageTitle>
+
+<div class="admin-page-title"><h1>تیکت‌های پشتیبانی</h1></div>
+
+<div class="az-card p-3 mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-6"><label class="form-label small">جست‌وجو</label><input class="form-control form-control-sm" placeholder="شماره تیکت، نام، موبایل، موضوع یا شماره سفارش" @bind="query" @bind:event="oninput" @onkeyup="OnKey" /></div>
+        <div class="col-md-3">
+            <label class="form-label small">وضعیت</label>
+            <select class="form-select form-select-sm" @bind="StatusValue">
+                <option value="">همه</option>
+                @foreach (var s in Enum.GetValues<TicketStatus>()) { <option value="@((int)s)">@DisplayNames.Of(s)</option> }
+            </select>
+        </div>
+        <div class="col-md-3 d-grid"><button class="btn btn-sm btn-primary" @onclick="() => LoadAsync(1)"><i class="bi bi-funnel"></i> اعمال</button></div>
+    </div>
+</div>
+
+<div class="az-card">
+    <div class="table-responsive">
+        <table class="table table-az table-hover">
+            <thead><tr><th>شماره</th><th>موضوع</th><th>مشتری</th><th>سفارش</th><th>وضعیت</th><th>آخرین فعالیت</th><th></th></tr></thead>
+            <tbody>
+                @if (result is not null)
+                {
+                    @foreach (var t in result.Items)
+                    {
+                        <tr class="@(t.Status == TicketStatus.Open ? "table-warning" : null)">
+                            <td class="ltr text-end">@t.TicketNumber</td>
+                            <td>@t.Subject <span class="badge bg-light text-dark">@Persian.Digits(t.MessageCount)</span></td>
+                            <td class="text-nowrap">@t.FullName<div class="small ltr text-end">@t.Mobile</div></td>
+                            <td class="ltr text-end">@(t.OrderNumber ?? "—")</td>
+                            <td><span class="badge @DisplayNames.BadgeClass(t.Status)">@DisplayNames.Of(t.Status)</span></td>
+                            <td class="small text-nowrap">@Persian.ToJalali(Clock.ToLocal(t.LastActivityAt), true)</td>
+                            <td><a class="btn btn-sm btn-outline-primary" href="/admin/tickets/@t.Id">مشاهده و پاسخ</a></td>
+                        </tr>
+                    }
+                    @if (result.Items.Count == 0) { <tr><td colspan="7" class="text-center text-muted py-4">تیکتی یافت نشد.</td></tr> }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@if (result is not null) { <AdminPager Page="result.Page" TotalPages="result.TotalPages" TotalCount="result.TotalCount" PageChanged="LoadAsync" /> }
+
+@code {
+    private PagedResult<TicketRow>? result;
+    private string? query;
+    private TicketStatus? status;
+
+    private string StatusValue
+    {
+        get => status is { } s ? ((int)s).ToString() : "";
+        set => status = int.TryParse(value, out var v) ? (TicketStatus)v : null;
+    }
+
+    [SupplyParameterFromQuery(Name = "status")] private int? InitialStatus { get; set; }
+
+    protected override Task OnInitializedAsync()
+    {
+        if (InitialStatus is { } s && Enum.IsDefined(typeof(TicketStatus), s)) status = (TicketStatus)s;
+        return LoadAsync(1);
+    }
+    private async Task LoadAsync(int page) => result = await TicketsSvc.SearchAsync(status, query, page);
+    private async Task OnKey(KeyboardEventArgs e) { if (e.Key == "Enter") await LoadAsync(1); }
+}

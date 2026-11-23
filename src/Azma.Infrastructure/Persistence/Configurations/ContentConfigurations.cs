@@ -31,6 +31,10 @@ public sealed class SiteSettingsConfiguration : IEntityTypeConfiguration<SiteSet
         b.Property(x => x.Aparat).HasMaxLength(300);
         b.Property(x => x.EnamadHtmlCode).HasMaxLength(2000);
         b.Property(x => x.PaymentDescription).HasMaxLength(200).IsRequired();
+        b.Property(x => x.CardNumber).HasMaxLength(30).IsUnicode(false);
+        b.Property(x => x.CardHolderName).HasMaxLength(100);
+        b.Property(x => x.BankName).HasMaxLength(100);
+        b.Property(x => x.ShebaNumber).HasMaxLength(40).IsUnicode(false);
         b.ToTable(t => t.HasCheckConstraint("CK_SiteSettings_Singleton", "[Id] = 1"));
     }
 }
@@ -51,6 +55,19 @@ public sealed class FeatureItemConfiguration : IEntityTypeConfiguration<FeatureI
         b.Property(x => x.Title).HasMaxLength(150).IsRequired();
         b.Property(x => x.Description).HasMaxLength(500);
         b.Property(x => x.Icon).HasMaxLength(50).IsRequired();
+    }
+}
+
+public sealed class HeroSlideConfiguration : IEntityTypeConfiguration<HeroSlide>
+{
+    public void Configure(EntityTypeBuilder<HeroSlide> b)
+    {
+        b.Property(x => x.Title).HasMaxLength(150);
+        b.Property(x => x.Subtitle).HasMaxLength(400);
+        b.Property(x => x.ImagePath).HasMaxLength(300).IsRequired();
+        b.Property(x => x.ButtonText).HasMaxLength(50);
+        b.Property(x => x.ButtonUrl).HasMaxLength(300);
+        b.HasIndex(x => new { x.IsActive, x.SortOrder });
     }
 }
 

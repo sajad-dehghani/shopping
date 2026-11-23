@@ -251,63 +251,11 @@ public sealed class PaymentService(
         if (order.Status == OrderStatus.Cancelled)
             AppendNote(order, "⚠ این سفارش پیش از تأیید پرداخت لغو شده بود؛ پرداخت موفق دریافت شد و سفارش دوباره فعال شد.");
 
-        order.ChangeStatus(OrderStatus.Paid, now, $"تأیید پرداخت توسط درگاه (RefID: {transaction.RefId})", by);
-        order.PaidAt = now;
-        order.TrackingCode = transaction.RefId;
-
-        foreach (var e in order.Enrollments.Where(e => e.Status != EnrollmentStatus.Confirmed))
-        {
-            e.Status = EnrollmentStatus.Confirmed;
-            e.ConfirmedAt = now;
-            e.ReservedUntil = null;
-            e.UpdatedAt = now;
-        }
-
-        foreach (var item in order.Items)
-        {
-            if (item.ItemType == OrderItemType.Product && item.ProductId is { } productId)
-            {
-                var product = await db.Products.FirstAsync(p => p.Id == productId, ct);
-                if (product.Stock is { } stock)
-                {
-                    if (stock < item.Quantity)
-                        AppendNote(order, $"⚠ موجودی «{product.Name}» برای این سفارش کافی نبود (موجودی {stock}).");
-                    product.Stock = Math.Max(0, stock - item.Quantity);
-                    product.UpdatedAt = now;
-                }
-            }
-            else if (item.ItemType == OrderItemType.Course && item.CourseId is { } courseId)
-            {
-                var capacity = await db.Courses.Where(c => c.Id == courseId).Select(c => c.Capacity).FirstAsync(ct);
-                if (capacity is { } cap)
-                {
-                    var confirmed = await db.Enrollments.CountAsync(e => e.CourseId == courseId && e.Status == EnrollmentStatus.Confirmed && e.OrderId != order.Id, ct);
-                    if (confirmed + 1 > cap)
-                        AppendNote(order, "⚠ ظرفیت دوره پیش از تأیید این پرداخت تکمیل شده بود.");
-                }
-            }
-        }
+        await OrderFulfillment.ApplyPaidAsync(db, order, now, $"تأیید پرداخت توسط درگاه (RefID: {transaction.RefId})", transaction.RefId, by, ct);
     }
 
-    private async Task<Result> CheckAvailabilityAsync(IAppDbContext db, Order order, DateTime now, CancellationToken ct)
-    {
-        foreach (var item in order.Items)
-        {
-            if (item.ItemType == OrderItemType.Course && item.Course is { } course)
-            {
-                var used = await db.Enrollments
-                    .Where(e => e.CourseId == course.Id && e.OrderId != order.Id)
-                    .CountAsync(SeatQueries.OccupiesSeat(now), ct);
-                var state = course.GetRegistrationState(clock.Today, used);
-                if (state != RegistrationState.Open) return Result.Fail($"امکان پرداخت وجود ندارد: {DisplayNames.Of(state)}.");
-            }
-            else if (item.ItemType == OrderItemType.Product && item.Product is { } product && !product.IsPurchasable(item.Quantity))
-            {
-                return Result.Fail($"محصول «{product.Name}» در حال حاضر موجود نیست.");
-            }
-        }
-        return Result.Ok();
-    }
+    private Task<Result> CheckAvailabilityAsync(IAppDbContext db, Order order, DateTime now, CancellationToken ct)
+        => OrderFulfillment.CheckAvailabilityAsync(db, order, now, clock.Today, ct);
 
     private static void AppendNote(Order order, string note)
         => order.AdminNote = string.IsNullOrEmpty(order.AdminNote) ? note : order.AdminNote + "\n" + note;

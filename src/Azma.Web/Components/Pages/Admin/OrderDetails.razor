@@ -10,7 +10,7 @@
 
 @if (order is null)
 {
-    <p class="text-muted">@(loaded ? "سفارش یافت نشد." : "در حال بارگذاری...")</p>
+    @if (loaded) { <EmptyState Icon="bi-receipt" Title="سفارش یافت نشد" /> } else { <Loading /> }
     return;
 }
 
@@ -69,6 +69,24 @@
                     <div class="border rounded p-2 mb-2">
                         <div class="d-flex justify-content-between"><strong>@e.Course?.Title</strong><span class="badge @(e.Status == EnrollmentStatus.Confirmed ? "bg-success" : e.Status == EnrollmentStatus.Cancelled ? "bg-secondary" : "bg-warning text-dark")">@DisplayNames.Of(e.Status)</span></div>
                         @foreach (var f in SalesAdminService.ParseExtraFields(e.ExtraFieldsJson)) { <div class="small"><span class="text-muted">@f.Label:</span> @f.Value</div> }
+                    </div>
+                }
+            </div>
+        }
+
+        @if (order.Receipts.Count > 0)
+        {
+            <div class="az-card p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h6 m-0">رسیدهای کارت به کارت</h2><a href="/admin/receipts" class="btn btn-sm btn-light">مدیریت رسیدها</a></div>
+                @foreach (var rc in order.Receipts)
+                {
+                    <div class="d-flex gap-3 border rounded p-2 mb-2 align-items-center">
+                        <a href="/admin/receipts/@rc.Id/image" target="_blank" class="receipt-thumb sm"><img src="/admin/receipts/@rc.Id/image" alt="رسید" loading="lazy" /></a>
+                        <div class="small flex-grow-1">
+                            <div><strong>@rc.PayerName</strong> — <span class="ltr">@rc.PayerMobile</span> <span class="badge @DisplayNames.BadgeClass(rc.Status)">@DisplayNames.Of(rc.Status)</span></div>
+                            <div class="text-muted">@Persian.Toman(rc.Amount) · @Persian.ToJalali(Clock.ToLocal(rc.CreatedAt), true)@(rc.BankReference is null ? "" : " · پیگیری بانکی " + rc.BankReference)</div>
+                            @if (rc.RejectReason is not null) { <div class="text-danger">دلیل رد: @rc.RejectReason</div> }
+                        </div>
                     </div>
                 }
             </div>

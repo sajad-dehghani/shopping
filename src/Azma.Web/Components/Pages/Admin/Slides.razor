@@ -1,0 +1,102 @@
+@page "/admin/slides"
+@rendermode InteractiveServer
+@inject ContentAdminService Content
+
+<PageTitle>اسلایدر صفحه اصلی</PageTitle>
+<AdminToast Message="@ToastMessage" IsError="ToastIsError" OnClose="ClearToast" />
+
+<div class="admin-page-title">
+    <div>
+        <h1>اسلایدر صفحه اصلی</h1>
+        <p class="admin-page-sub">تصاویر بالای صفحه اصلی به ترتیب «ترتیب نمایش» و به صورت خودکار جابه‌جا می‌شوند.</p>
+    </div>
+    <button class="btn btn-primary" @onclick="Add"><i class="bi bi-plus-lg"></i> اسلاید جدید</button>
+</div>
+
+<div class="alert alert-info small d-flex gap-2 align-items-start">
+    <i class="bi bi-info-circle mt-1"></i>
+    <div>
+        اندازه پیشنهادی تصویر: <b>۱۶۰۰ × ۷۰۰ پیکسل</b> (افقی). متن اسلاید روی نیمه راست تصویر نمایش داده می‌شود؛ تصاویری انتخاب کنید که آن بخش شلوغ نباشد.
+        فاصله زمانی جابه‌جایی اسلایدها در <a href="/admin/settings">تنظیمات سایت</a> قابل تغییر است.
+        اگر هیچ اسلاید فعالی نباشد، تصویر و متن معرفی تنظیمات نمایش داده می‌شود.
+    </div>
+</div>
+
+@if (slides is null) { <Loading /> return; }
+
+@if (slides.Count == 0)
+{
+    <EmptyState Icon="bi-images" Title="هنوز اسلایدی ثبت نشده است" Text="اولین اسلاید را اضافه کنید تا بالای صفحه اصلی نمایش داده شود.">
+        <button class="btn btn-primary mt-2" @onclick="Add"><i class="bi bi-plus-lg"></i> افزودن اسلاید</button>
+    </EmptyState>
+}
+
+<div class="row g-3">
+    @foreach (var s in slides)
+    {
+        <div class="col-md-6 col-xl-4">
+            <div class="az-card slide-card h-100 @(s.IsActive ? null : "is-off")">
+                <div class="slide-preview">
+                    @if (!string.IsNullOrEmpty(s.ImagePath)) { <img src="@s.ImagePath" alt="" /> }
+                    else { <div class="slide-preview-empty"><i class="bi bi-image"></i><span>تصویر انتخاب نشده</span></div> }
+                    <div class="slide-preview-text">
+                        @if (!string.IsNullOrEmpty(s.Title)) { <strong>@s.Title</strong> }
+                        @if (!string.IsNullOrEmpty(s.ButtonText)) { <span class="chip-btn">@s.ButtonText</span> }
+                    </div>
+                    @if (!s.IsActive) { <span class="badge bg-secondary slide-state">غیرفعال</span> }
+                </div>
+                <div class="p-3">
+                    <ImageUpload @bind-Value="s.ImagePath" Folder="slides" AllowRemove="false" />
+                    <div class="row g-2 mt-1">
+                        <div class="col-12"><label class="form-label small">عنوان</label><input class="form-control form-control-sm" @bind="s.Title" maxlength="150" placeholder="مثلاً: دوره‌های جدید پاییز" /></div>
+                        <div class="col-12"><label class="form-label small">توضیح کوتاه</label><textarea class="form-control form-control-sm" rows="2" @bind="s.Subtitle" maxlength="400"></textarea></div>
+                        <div class="col-6"><label class="form-label small">متن دکمه</label><input class="form-control form-control-sm" @bind="s.ButtonText" maxlength="50" placeholder="مشاهده دوره‌ها" /></div>
+                        <div class="col-6"><label class="form-label small">لینک دکمه</label><input class="form-control form-control-sm ltr" @bind="s.ButtonUrl" maxlength="300" placeholder="/courses" /></div>
+                        <div class="col-6"><label class="form-label small">ترتیب نمایش</label><input type="number" class="form-control form-control-sm" @bind="s.SortOrder" /></div>
+                        <div class="col-6 d-flex align-items-end">
+                            <div class="form-check form-switch mb-1"><input class="form-check-input" type="checkbox" id="sl@(s.GetHashCode())" @bind="s.IsActive" /><label class="form-check-label small" for="sl@(s.GetHashCode())">نمایش در سایت</label></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-actions">
+                    <button class="btn btn-sm btn-primary" disabled="@Busy" @onclick="() => SaveAsync(s)"><i class="bi bi-check2"></i> ذخیره</button>
+                    @if (s.Id != 0)
+                    {
+                        <ConfirmButton OnConfirm="() => DeleteAsync(s.Id)"><i class="bi bi-trash"></i> حذف</ConfirmButton>
+                    }
+                    else
+                    {
+                        <button class="btn btn-sm btn-light" @onclick="() => slides.Remove(s)">انصراف</button>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<HeroSlide>? slides;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync() => slides = await Content.ListAsync<HeroSlide>();
+
+    private void Add() => slides?.Add(new HeroSlide { SortOrder = (slides.Count == 0 ? 0 : slides.Max(x => x.SortOrder)) + 1 });
+
+    private async Task SaveAsync(HeroSlide s)
+    {
+        Busy = true;
+        try
+        {
+            var r = await Content.SaveAsync(s, await GetActorAsync());
+            if (r.Succeeded) { ShowOk("اسلاید ذخیره شد."); await LoadAsync(); } else ShowError(r.Error);
+        }
+        finally { Busy = false; }
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        var r = await Content.DeleteAsync<HeroSlide>(id, await GetActorAsync());
+        if (r.Succeeded) { ShowOk("اسلاید حذف شد."); await LoadAsync(); } else ShowError(r.Error);
+    }
+}

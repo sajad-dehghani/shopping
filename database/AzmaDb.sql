@@ -925,3 +925,265 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    UPDATE [SiteSettings] SET [SiteName] = N'فروشگاه آزما' WHERE [SiteName] = N'آموزشگاه آزما';
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    ALTER TABLE [SiteSettings] ADD [BankName] nvarchar(100) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    ALTER TABLE [SiteSettings] ADD [CardHolderName] nvarchar(100) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    ALTER TABLE [SiteSettings] ADD [CardNumber] varchar(30) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    ALTER TABLE [SiteSettings] ADD [CardToCardEnabled] bit NOT NULL DEFAULT CAST(1 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    ALTER TABLE [SiteSettings] ADD [ShebaNumber] varchar(40) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    CREATE TABLE [PaymentReceipts] (
+        [Id] int NOT NULL IDENTITY,
+        [OrderId] int NOT NULL,
+        [PayerName] nvarchar(100) NOT NULL,
+        [PayerMobile] varchar(11) NOT NULL,
+        [CardLast4] varchar(4) NULL,
+        [BankReference] nvarchar(50) NULL,
+        [CustomerNote] nvarchar(500) NULL,
+        [Amount] bigint NOT NULL,
+        [ImagePath] nvarchar(300) NOT NULL,
+        [Status] int NOT NULL,
+        [ReviewedBy] nvarchar(256) NULL,
+        [ReviewedAt] datetime2 NULL,
+        [RejectReason] nvarchar(500) NULL,
+        [CreatedAt] datetime2 NOT NULL,
+        [UpdatedAt] datetime2 NULL,
+        CONSTRAINT [PK_PaymentReceipts] PRIMARY KEY ([Id]),
+        CONSTRAINT [CK_PaymentReceipts_Amount] CHECK ([Amount] > 0),
+        CONSTRAINT [FK_PaymentReceipts_Orders_OrderId] FOREIGN KEY ([OrderId]) REFERENCES [Orders] ([Id]) ON DELETE NO ACTION
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    CREATE TABLE [Tickets] (
+        [Id] int NOT NULL IDENTITY,
+        [TicketNumber] varchar(20) NOT NULL,
+        [PublicId] uniqueidentifier NOT NULL,
+        [OrderId] int NULL,
+        [FullName] nvarchar(100) NOT NULL,
+        [Mobile] varchar(11) NOT NULL,
+        [Subject] nvarchar(150) NOT NULL,
+        [Status] int NOT NULL,
+        [LastActivityAt] datetime2 NOT NULL,
+        [CreatedAt] datetime2 NOT NULL,
+        [UpdatedAt] datetime2 NULL,
+        CONSTRAINT [PK_Tickets] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_Tickets_Orders_OrderId] FOREIGN KEY ([OrderId]) REFERENCES [Orders] ([Id]) ON DELETE SET NULL
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    CREATE TABLE [TicketMessages] (
+        [Id] int NOT NULL IDENTITY,
+        [TicketId] int NOT NULL,
+        [Body] nvarchar(4000) NOT NULL,
+        [IsFromStaff] bit NOT NULL,
+        [AuthorName] nvarchar(256) NULL,
+        [CreatedAt] datetime2 NOT NULL,
+        CONSTRAINT [PK_TicketMessages] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_TicketMessages_Tickets_TicketId] FOREIGN KEY ([TicketId]) REFERENCES [Tickets] ([Id]) ON DELETE CASCADE
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    CREATE INDEX [IX_PaymentReceipts_OrderId] ON [PaymentReceipts] ([OrderId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    CREATE INDEX [IX_PaymentReceipts_Status_CreatedAt] ON [PaymentReceipts] ([Status], [CreatedAt]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    CREATE INDEX [IX_TicketMessages_TicketId] ON [TicketMessages] ([TicketId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    CREATE INDEX [IX_Tickets_Mobile] ON [Tickets] ([Mobile]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    CREATE INDEX [IX_Tickets_OrderId] ON [Tickets] ([OrderId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_Tickets_PublicId] ON [Tickets] ([PublicId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    CREATE INDEX [IX_Tickets_Status_LastActivityAt] ON [Tickets] ([Status], [LastActivityAt]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_Tickets_TicketNumber] ON [Tickets] ([TicketNumber]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123082130_CardToCardAndTickets'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261123082130_CardToCardAndTickets', N'10.0.15');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123104444_HeroSlidesAndSections'
+)
+BEGIN
+    ALTER TABLE [SiteSettings] ADD [CoursesEnabled] bit NOT NULL DEFAULT CAST(1 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123104444_HeroSlidesAndSections'
+)
+BEGIN
+    ALTER TABLE [SiteSettings] ADD [ShopEnabled] bit NOT NULL DEFAULT CAST(1 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123104444_HeroSlidesAndSections'
+)
+BEGIN
+    ALTER TABLE [SiteSettings] ADD [SliderIntervalSeconds] int NOT NULL DEFAULT 6;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123104444_HeroSlidesAndSections'
+)
+BEGIN
+    CREATE TABLE [HeroSlides] (
+        [Id] int NOT NULL IDENTITY,
+        [Title] nvarchar(150) NULL,
+        [Subtitle] nvarchar(400) NULL,
+        [ImagePath] nvarchar(300) NOT NULL,
+        [ButtonText] nvarchar(50) NULL,
+        [ButtonUrl] nvarchar(300) NULL,
+        [SortOrder] int NOT NULL,
+        [IsActive] bit NOT NULL,
+        CONSTRAINT [PK_HeroSlides] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123104444_HeroSlidesAndSections'
+)
+BEGIN
+    CREATE INDEX [IX_HeroSlides_IsActive_SortOrder] ON [HeroSlides] ([IsActive], [SortOrder]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123104444_HeroSlidesAndSections'
+)
+BEGIN
+    UPDATE [SiteSettings] SET [TermsText] = NULL WHERE [TermsText] LIKE N'%پس از پرداخت موفق و دریافت کد پیگیری قطعی می%' AND LEN([TermsText]) < 400;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261123104444_HeroSlidesAndSections'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261123104444_HeroSlidesAndSections', N'10.0.15');
+END;
+
+COMMIT;
+GO
+

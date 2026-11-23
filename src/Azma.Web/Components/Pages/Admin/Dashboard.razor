@@ -6,16 +6,38 @@
 <PageTitle>داشبورد مدیریت</PageTitle>
 
 <div class="admin-page-title">
-    <h1>داشبورد</h1>
-    <button class="btn btn-sm btn-light" @onclick="LoadAsync"><i class="bi bi-arrow-clockwise"></i> به‌روزرسانی</button>
+    <div>
+        <h1>داشبورد</h1>
+        <p class="admin-page-sub">خلاصه وضعیت فروش و پشتیبانی · @Persian.ToJalali(Clock.ToLocal(Clock.UtcNow))</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="/admin/slides" class="btn btn-sm btn-light"><i class="bi bi-images"></i> اسلایدر</a>
+        <a href="/admin/courses/new" class="btn btn-sm btn-light"><i class="bi bi-plus-lg"></i> دوره جدید</a>
+        <a href="/admin/products/new" class="btn btn-sm btn-light"><i class="bi bi-plus-lg"></i> محصول جدید</a>
+        <button class="btn btn-sm btn-primary" @onclick="LoadAsync"><i class="bi bi-arrow-clockwise"></i> به‌روزرسانی</button>
+    </div>
 </div>
 
 @if (stats is null)
 {
-    <p class="text-muted">در حال بارگذاری...</p>
+    <Loading />
 }
 else
 {
+    @if (pendingReceipts > 0)
+    {
+        <div class="alert alert-primary d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-receipt-cutoff ms-1"></i> @Persian.Digits(pendingReceipts) رسید کارت به کارت منتظر تأیید است.</span>
+            <a href="/admin/receipts" class="btn btn-sm btn-primary">بررسی رسیدها</a>
+        </div>
+    }
+    @if (openTickets > 0)
+    {
+        <div class="alert alert-warning d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-life-preserver ms-1"></i> @Persian.Digits(openTickets) تیکت پشتیبانی در انتظار پاسخ است.</span>
+            <a href="/admin/tickets?status=0" class="btn btn-sm btn-warning">پاسخ به تیکت‌ها</a>
+        </div>
+    }
     @if (stats.UnknownPayments > 0)
     {
         <div class="alert alert-info d-flex justify-content-between align-items-center">
@@ -24,14 +46,14 @@ else
         </div>
     }
     <div class="row g-3 mb-4">
-        <Stat Icon="bi-people" Label="کل ثبت‌نام‌های قطعی" Value="@Persian.Digits(stats.TotalEnrollments)" Href="/admin/enrollments" />
-        <Stat Icon="bi-person-plus" Label="ثبت‌نام‌های امروز" Value="@Persian.Digits(stats.TodayEnrollments)" Href="/admin/enrollments" />
-        <Stat Icon="bi-journal-bookmark" Label="دوره‌های فعال" Value="@Persian.Digits(stats.ActiveCourses)" Href="/admin/courses" />
-        <Stat Icon="bi-box-seam" Label="محصولات منتشرشده" Value="@Persian.Digits(stats.Products)" Href="/admin/products" />
+        <Stat Icon="bi-calendar-day" Tone="success" Label="پرداختی امروز" Value="@Persian.Toman(stats.TodayPaidAmount)" />
+        <Stat Icon="bi-cash-stack" Tone="success" Label="مجموع پرداخت‌شده" Value="@Persian.Toman(stats.TotalPaidAmount)" />
         <Stat Icon="bi-check2-circle" Label="سفارش‌های موفق" Value="@Persian.Digits(stats.PaidOrders)" Href="@($"/admin/orders?status={(int)OrderStatus.Paid}")" />
-        <Stat Icon="bi-hourglass-split" Label="در انتظار پرداخت" Value="@Persian.Digits(stats.PendingOrders)" Href="@($"/admin/orders?status={(int)OrderStatus.PendingPayment}")" />
-        <Stat Icon="bi-cash-stack" Label="مجموع پرداخت‌شده" Value="@Persian.Toman(stats.TotalPaidAmount)" />
-        <Stat Icon="bi-calendar-day" Label="پرداختی امروز" Value="@Persian.Toman(stats.TodayPaidAmount)" />
+        <Stat Icon="bi-hourglass-split" Tone="warning" Label="در انتظار پرداخت" Value="@Persian.Digits(stats.PendingOrders)" Href="@($"/admin/orders?status={(int)OrderStatus.PendingPayment}")" />
+        <Stat Icon="bi-people" Tone="info" Label="کل ثبت‌نام‌های قطعی" Value="@Persian.Digits(stats.TotalEnrollments)" Href="/admin/enrollments" />
+        <Stat Icon="bi-person-plus" Tone="info" Label="ثبت‌نام‌های امروز" Value="@Persian.Digits(stats.TodayEnrollments)" Href="/admin/enrollments" />
+        <Stat Icon="bi-journal-bookmark" Tone="pink" Label="دوره‌های فعال" Value="@Persian.Digits(stats.ActiveCourses)" Href="/admin/courses" />
+        <Stat Icon="bi-box-seam" Tone="pink" Label="محصولات منتشرشده" Value="@Persian.Digits(stats.Products)" Href="/admin/products" />
     </div>
 
     <div class="row g-3">
@@ -89,7 +111,15 @@ else
 }
 
 @code {
+    [Inject] private ReceiptService Receipts { get; set; } = default!;
+    [Inject] private TicketService TicketsSvc { get; set; } = default!;
     private DashboardStats? stats;
+    private int pendingReceipts, openTickets;
     protected override Task OnInitializedAsync() => LoadAsync();
-    private async Task LoadAsync() => stats = await DashboardSvc.GetAsync();
+    private async Task LoadAsync()
+    {
+        stats = await DashboardSvc.GetAsync();
+        pendingReceipts = await Receipts.CountPendingAsync();
+        openTickets = await TicketsSvc.CountOpenAsync();
+    }
 }

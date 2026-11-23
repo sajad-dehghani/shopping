@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="fa" dir="rtl" class="no-js">
 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#2453a6" />
+    <meta name="theme-color" content="#4f46e5" />
     <base href="/" />
     <ResourcePreloader />
     <link rel="preload" href="@Assets["lib/vazirmatn/Vazirmatn-Variable.woff2"]" as="font" type="font/woff2" crossorigin />
@@ -16,13 +16,17 @@
     <HeadOutlet />
 </head>
 
-<body class="@(IsAdmin ? "admin-body" : null)">
+<body class="@(IsAdmin ? "admin-body" : "has-bottom-nav")">
     <Routes />
     @if (IsAdmin)
     {
         <ReconnectModal />
     }
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+    @if (!IsAdmin)
+    {
+        <script src="@Assets["js/site.js"]"></script>
+    }
 </body>
 
 </html>

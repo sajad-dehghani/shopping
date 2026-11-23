@@ -19,6 +19,7 @@ public sealed class ContentAdminService(IAppDbContextFactory dbFactory, ISiteClo
         {
             IQueryable<FaqItem> f => (IQueryable<T>)f.OrderBy(x => x.SortOrder).ThenBy(x => x.Id),
             IQueryable<FeatureItem> f => (IQueryable<T>)f.OrderBy(x => x.SortOrder).ThenBy(x => x.Id),
+            IQueryable<HeroSlide> f => (IQueryable<T>)f.OrderBy(x => x.SortOrder).ThenBy(x => x.Id),
             IQueryable<Instructor> f => (IQueryable<T>)f.OrderBy(x => x.SortOrder).ThenBy(x => x.Id),
             IQueryable<CourseCategory> f => (IQueryable<T>)f.OrderBy(x => x.SortOrder).ThenBy(x => x.Id),
             IQueryable<ProductCategory> f => (IQueryable<T>)f.OrderBy(x => x.SortOrder).ThenBy(x => x.Id),
@@ -47,11 +48,19 @@ public sealed class ContentAdminService(IAppDbContextFactory dbFactory, ISiteClo
                 if (i.Id == 0) i.CreatedAt = clock.UtcNow; else i.UpdatedAt = clock.UtcNow;
                 if (i.Id != 0) oldPhoto = await db.Instructors.Where(x => x.Id == i.Id).Select(x => x.PhotoPath).FirstOrDefaultAsync(ct);
                 break;
+            case HeroSlide h:
+                h.Title = Clean(h.Title);
+                h.Subtitle = Clean(h.Subtitle);
+                h.ButtonText = Clean(h.ButtonText);
+                h.ButtonUrl = Clean(h.ButtonUrl);
+                if (h.Id != 0) oldPhoto = await db.HeroSlides.Where(x => x.Id == h.Id).Select(x => x.ImagePath).FirstOrDefaultAsync(ct);
+                break;
         }
 
         if (entity.Id == 0) db.Set<T>().Add(entity); else db.Set<T>().Update(entity);
         await db.SaveChangesAsync(ct);
         if (entity is Instructor ins && oldPhoto is not null && oldPhoto != ins.PhotoPath) await files.DeleteAsync(oldPhoto);
+        if (entity is HeroSlide hs && oldPhoto is not null && oldPhoto != hs.ImagePath) await files.DeleteAsync(oldPhoto);
         await audit.LogAsync(actor, "Save" + typeof(T).Name, typeof(T).Name, entity.Id, Describe(entity), ct);
         return Result.Ok();
     }
@@ -64,6 +73,7 @@ public sealed class ContentAdminService(IAppDbContextFactory dbFactory, ISiteClo
         db.Set<T>().Remove(entity);
         await db.SaveChangesAsync(ct);
         if (entity is Instructor i) await files.DeleteAsync(i.PhotoPath);
+        if (entity is HeroSlide slide) await files.DeleteAsync(slide.ImagePath);
         await audit.LogAsync(actor, "Delete" + typeof(T).Name, typeof(T).Name, id, Describe(entity), ct);
         return Result.Ok();
     }
@@ -93,9 +103,23 @@ public sealed class ContentAdminService(IAppDbContextFactory dbFactory, ISiteClo
         Instructor i when string.IsNullOrWhiteSpace(i.FullName) => "نام مدرس الزامی است.",
         FaqItem f when string.IsNullOrWhiteSpace(f.Question) || string.IsNullOrWhiteSpace(f.Answer) => "پرسش و پاسخ هر دو الزامی هستند.",
         FeatureItem f when string.IsNullOrWhiteSpace(f.Title) => "عنوان مزیت الزامی است.",
-        FeatureItem f when !System.Text.RegularExpressions.Regex.IsMatch(f.Icon ?? "", "^bi-[a-z0-9-]+$") => "نام آیکون باید مانند bi-award باشد.",
+        FeatureItem f when !System.Text.RegularExpressions.Regex.IsMatch(f.Icon ?? "", "^bi-[a-z0-9-]+$") => "یک آیکون انتخاب کنید.",
+        HeroSlide h when string.IsNullOrWhiteSpace(h.ImagePath) => "تصویر اسلاید الزامی است.",
+        HeroSlide h when !IsSafeLink(h.ButtonUrl) => "لینک دکمه باید با / شروع شود (مثل /courses) یا آدرس کامل https:// باشد.",
+        HeroSlide h when !string.IsNullOrWhiteSpace(h.ButtonUrl) && string.IsNullOrWhiteSpace(h.ButtonText) => "برای لینک، متن دکمه را هم وارد کنید.",
         _ => null,
     };
+
+    private static string? Clean(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
+
+    /// <summary>Only site-relative paths or absolute https URLs (no javascript:, no protocol-relative //host).</summary>
+    public static bool IsSafeLink(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return true;
+        url = url.Trim();
+        if (url.StartsWith('/')) return !url.StartsWith("//") && !url.StartsWith("/\\");
+        return Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Scheme == Uri.UriSchemeHttps;
+    }
 
     private static string Describe(object entity) => entity switch
     {
@@ -104,6 +128,7 @@ public sealed class ContentAdminService(IAppDbContextFactory dbFactory, ISiteClo
         Instructor i => i.FullName,
         FaqItem f => f.Question,
         FeatureItem f => f.Title,
+        HeroSlide h => h.Title ?? h.ImagePath,
         ContactMessage m => $"{m.FullName} {m.Mobile}",
         _ => entity.GetType().Name,
     };

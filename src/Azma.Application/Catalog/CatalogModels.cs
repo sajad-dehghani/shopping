@@ -80,4 +80,5 @@ public sealed class HomePageData
     public IReadOnlyList<Instructor> Instructors { get; init; } = [];
     public IReadOnlyList<FeatureItem> Features { get; init; } = [];
     public IReadOnlyList<FaqItem> Faqs { get; init; } = [];
+    public IReadOnlyList<HeroSlide> Slides { get; init; } = [];
 }

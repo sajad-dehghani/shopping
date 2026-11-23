@@ -5,16 +5,15 @@
 <PageTitle>محتوای صفحه اصلی</PageTitle>
 <AdminToast Message="@ToastMessage" IsError="ToastIsError" OnClose="ClearToast" />
 <div class="admin-page-title"><h1>محتوای صفحه اصلی</h1></div>
-<p class="text-muted small">متن معرفی، تصویر بالای صفحه و اطلاعات تماس در <a href="/admin/settings">تنظیمات سایت</a> قابل ویرایش هستند.</p>
+<p class="text-muted small">اسلایدهای بالای صفحه در <a href="/admin/slides">اسلایدر صفحه اصلی</a> و اطلاعات تماس در <a href="/admin/settings">تنظیمات سایت</a> قابل ویرایش هستند.</p>
 
 <div class="az-card p-3 mb-4">
     <h2 class="h6">مزیت‌های شرکت در دوره‌ها</h2>
     @foreach (var f in features)
     {
         <div class="row g-2 align-items-center border-bottom py-2">
-            <div class="col-md-1 text-center fs-4"><i class="bi @f.Icon text-primary"></i></div>
-            <div class="col-md-2"><input class="form-control form-control-sm ltr" @bind="f.Icon" placeholder="bi-award" /></div>
-            <div class="col-md-3"><input class="form-control form-control-sm" @bind="f.Title" placeholder="عنوان" /></div>
+            <div class="col-3 col-md-1"><IconPicker @bind-Value="f.Icon" /></div>
+            <div class="col-9 col-md-5"><input class="form-control form-control-sm" @bind="f.Title" placeholder="عنوان" /></div>
             <div class="col-md-3"><input class="form-control form-control-sm" @bind="f.Description" placeholder="توضیح" /></div>
             <div class="col-4 col-md-1"><input type="number" class="form-control form-control-sm" @bind="f.SortOrder" title="ترتیب" /></div>
             <div class="col-4 col-md-1"><div class="form-check"><input class="form-check-input" type="checkbox" @bind="f.IsActive" title="فعال" /></div></div>
@@ -25,7 +24,6 @@
         </div>
     }
     <button class="btn btn-sm btn-light mt-2" @onclick="() => features.Add(new())"><i class="bi bi-plus"></i> افزودن مزیت</button>
-    <p class="small text-muted mt-2 mb-0">نام آیکون‌ها را از <span class="ltr">icons.getbootstrap.com</span> انتخاب کنید (مثلاً bi-award).</p>
 </div>
 
 <div class="az-card p-3">

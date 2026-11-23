@@ -21,6 +21,19 @@ public class FeatureItem : Entity
     public bool IsActive { get; set; } = true;
 }
 
+/// <summary>A slide in the home page hero carousel.</summary>
+public class HeroSlide : Entity
+{
+    public string? Title { get; set; }
+    public string? Subtitle { get; set; }
+    public string ImagePath { get; set; } = "";
+    public string? ButtonText { get; set; }
+    /// <summary>Local path ("/courses") or absolute https URL.</summary>
+    public string? ButtonUrl { get; set; }
+    public int SortOrder { get; set; }
+    public bool IsActive { get; set; } = true;
+}
+
 public class ContactMessage : Entity
 {
     public string FullName { get; set; } = "";

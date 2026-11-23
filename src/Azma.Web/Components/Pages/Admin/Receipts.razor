@@ -1,0 +1,120 @@
+@page "/admin/receipts"
+@rendermode InteractiveServer
+@inject ReceiptService ReceiptSvc
+@inject ISiteClock Clock
+
+<PageTitle>رسیدهای کارت به کارت</PageTitle>
+<AdminToast Message="@ToastMessage" IsError="ToastIsError" OnClose="ClearToast" />
+
+<div class="admin-page-title">
+    <h1>رسیدهای کارت به کارت</h1>
+    <span class="text-muted small">پس از تطبیق مبلغ با حساب بانکی، رسید را تأیید کنید تا سفارش قطعی و کد رهگیری برای مشتری صادر شود.</span>
+</div>
+
+<div class="az-card p-3 mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-6"><label class="form-label small">جست‌وجو</label><input class="form-control form-control-sm" placeholder="نام، موبایل، شماره سفارش یا شماره پیگیری بانکی" @bind="query" @bind:event="oninput" @onkeyup="OnKey" /></div>
+        <div class="col-md-3">
+            <label class="form-label small">وضعیت</label>
+            <select class="form-select form-select-sm" @bind="StatusValue">
+                <option value="">همه</option>
+                @foreach (var s in Enum.GetValues<ReceiptStatus>()) { <option value="@((int)s)">@DisplayNames.Of(s)</option> }
+            </select>
+        </div>
+        <div class="col-md-3 d-grid"><button class="btn btn-sm btn-primary" @onclick="() => LoadAsync(1)"><i class="bi bi-funnel"></i> اعمال</button></div>
+    </div>
+</div>
+
+@if (result is null) { <Loading /> return; }
+@if (result.Items.Count == 0) { <div class="az-card p-4 text-center text-muted">رسیدی یافت نشد.</div> }
+
+<div class="row g-3">
+    @foreach (var r in result.Items)
+    {
+        <div class="col-xl-6">
+            <div class="az-card p-3 h-100 receipt-review @(r.Status == ReceiptStatus.PendingReview ? "is-pending" : null)">
+                <div class="d-flex gap-3">
+                    <a href="/admin/receipts/@r.Id/image" target="_blank" class="receipt-thumb" title="نمایش تصویر کامل">
+                        <img src="/admin/receipts/@r.Id/image" alt="تصویر رسید" loading="lazy" />
+                    </a>
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                            <a href="/admin/orders/@r.OrderId" class="fw-bold ltr">@r.OrderNumber</a>
+                            <span class="badge @DisplayNames.BadgeClass(r.Status)">@DisplayNames.Of(r.Status)</span>
+                        </div>
+                        <ul class="list-unstyled small mb-2">
+                            <li><span class="text-muted">واریزکننده:</span> @r.PayerName — <a class="ltr" href="tel:@r.PayerMobile">@r.PayerMobile</a></li>
+                            @if (r.PayerName != r.OrderCustomer) { <li><span class="text-muted">نام سفارش‌دهنده:</span> @r.OrderCustomer</li> }
+                            <li><span class="text-muted">مبلغ:</span> <strong>@Persian.Toman(r.Amount)</strong> @if (r.Amount != r.OrderTotal) { <span class="text-danger">(مبلغ فعلی سفارش: @Persian.Toman(r.OrderTotal))</span> }</li>
+                            @if (r.CardLast4 is not null) { <li><span class="text-muted">۴ رقم آخر کارت:</span> <span class="ltr">@r.CardLast4</span></li> }
+                            @if (r.BankReference is not null) { <li><span class="text-muted">شماره پیگیری بانکی:</span> <span class="ltr">@r.BankReference</span></li> }
+                            @if (r.CustomerNote is not null) { <li class="pre-line"><span class="text-muted">توضیح:</span> @r.CustomerNote</li> }
+                            <li><span class="text-muted">ارسال:</span> @Persian.ToJalali(Clock.ToLocal(r.CreatedAt), true)</li>
+                            @if (r.ReviewedAt is { } rv) { <li><span class="text-muted">بررسی:</span> @Persian.ToJalali(Clock.ToLocal(rv), true) — @r.ReviewedBy</li> }
+                            @if (r.RejectReason is not null) { <li class="text-danger">دلیل رد: @r.RejectReason</li> }
+                        </ul>
+                        @if (r.Status == ReceiptStatus.PendingReview)
+                        {
+                            <div class="d-flex flex-wrap gap-2">
+                                <ConfirmButton Text="تأیید و صدور کد رهگیری" ConfirmText="مبلغ به حساب رسیده؟ تأیید" CssClass="btn btn-sm btn-success" OnConfirm="() => ApproveAsync(r.Id)"><i class="bi bi-check2-circle"></i> تأیید و صدور کد رهگیری</ConfirmButton>
+                                @if (rejectingId == r.Id)
+                                {
+                                    <div class="input-group input-group-sm w-100 mt-1">
+                                        <input class="form-control" placeholder="دلیل رد (به مشتری نمایش داده می‌شود)" @bind="rejectReason" maxlength="500" />
+                                        <button class="btn btn-danger" disabled="@Busy" @onclick="() => RejectAsync(r.Id)">رد رسید</button>
+                                        <button class="btn btn-light" @onclick="() => rejectingId = null">انصراف</button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => { rejectingId = r.Id; rejectReason = null; }"><i class="bi bi-x-circle"></i> رد</button>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+<AdminPager Page="result.Page" TotalPages="result.TotalPages" TotalCount="result.TotalCount" PageChanged="LoadAsync" />
+
+@code {
+    private PagedResult<ReceiptRow>? result;
+    private string? query;
+    private ReceiptStatus? status = ReceiptStatus.PendingReview;
+    private int? rejectingId;
+    private string? rejectReason;
+
+    private string StatusValue
+    {
+        get => status is { } s ? ((int)s).ToString() : "";
+        set => status = int.TryParse(value, out var v) ? (ReceiptStatus)v : null;
+    }
+
+    protected override Task OnInitializedAsync() => LoadAsync(1);
+
+    private async Task LoadAsync(int page) => result = await ReceiptSvc.SearchAsync(status, query, page);
+
+    private async Task OnKey(KeyboardEventArgs e) { if (e.Key == "Enter") await LoadAsync(1); }
+
+    private async Task ApproveAsync(int id)
+    {
+        var r = await ReceiptSvc.ApproveAsync(id, await GetActorAsync());
+        if (r.Succeeded) ShowOk($"رسید تأیید شد. کد رهگیری: {r.Value}"); else ShowError(r.Error);
+        await LoadAsync(result?.Page ?? 1);
+    }
+
+    private async Task RejectAsync(int id)
+    {
+        Busy = true;
+        try
+        {
+            var r = await ReceiptSvc.RejectAsync(id, rejectReason ?? "", await GetActorAsync());
+            if (r.Succeeded) { ShowOk("رسید رد شد و سفارش به حالت «در انتظار پرداخت» برگشت."); rejectingId = null; }
+            else ShowError(r.Error);
+            await LoadAsync(result?.Page ?? 1);
+        }
+        finally { Busy = false; }
+    }
+}

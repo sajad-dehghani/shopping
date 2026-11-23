@@ -1,31 +1,40 @@
 ﻿<script type="module" src="@Assets["Components/Layout/ReconnectModal.razor.js"]"></script>
 
-<dialog id="components-reconnect-modal" data-nosnippet>
+@* Shown on admin (interactive) pages when the live connection to the server drops. *@
+<dialog id="components-reconnect-modal" data-nosnippet dir="rtl" aria-labelledby="rc-title">
     <div class="components-reconnect-container">
-        <div class="components-rejoining-animation" aria-hidden="true">
-            <div></div>
-            <div></div>
+        <div class="rc-visual" aria-hidden="true">
+            <div class="components-rejoining-animation"><div></div><div></div></div>
+            <span class="rc-icon rc-icon-wait"><i class="bi bi-wifi"></i></span>
+            <span class="rc-icon rc-icon-off"><i class="bi bi-wifi-off"></i></span>
+            <span class="rc-icon rc-icon-pause"><i class="bi bi-pause-circle"></i></span>
         </div>
-        <p class="components-reconnect-first-attempt-visible">
-            Rejoining the server...
-        </p>
-        <p class="components-reconnect-repeated-attempt-visible">
-            Rejoin failed... trying again in <span id="components-seconds-to-next-attempt"></span> seconds.
-        </p>
-        <p class="components-reconnect-failed-visible">
-            Failed to rejoin.<br />Please retry or reload the page.
-        </p>
-        <button id="components-reconnect-button" class="components-reconnect-failed-visible">
-            Retry
-        </button>
-        <p class="components-pause-visible">
-            The session has been paused by the server.
-        </p>
-        <p class="components-resume-failed-visible">
-            Failed to resume the session.<br />Please retry or reload the page.
-        </p>
-        <button id="components-resume-button" class="components-pause-visible components-resume-failed-visible">
-            Resume
-        </button>
+
+        <div class="components-reconnect-first-attempt-visible">
+            <h2 id="rc-title">ارتباط موقتاً قطع شد</h2>
+            <p>در حال اتصال دوباره به سرور… لطفاً چند لحظه صبر کنید. اطلاعات واردشده شما حفظ می‌شود.</p>
+        </div>
+        <div class="components-reconnect-repeated-attempt-visible">
+            <h2>هنوز در تلاش برای اتصال هستیم</h2>
+            <p>تلاش بعدی تا <strong id="components-seconds-to-next-attempt"></strong> ثانیه دیگر. اتصال اینترنت خود را بررسی کنید.</p>
+        </div>
+        <div class="components-reconnect-failed-visible">
+            <h2>اتصال برقرار نشد</h2>
+            <p>ارتباط با سرور برقرار نشد. دوباره تلاش کنید یا صفحه را بارگذاری مجدد کنید.</p>
+        </div>
+        <div class="components-pause-visible">
+            <h2>نشست متوقف شد</h2>
+            <p>به دلیل عدم فعالیت، نشست شما موقتاً متوقف شده است.</p>
+        </div>
+        <div class="components-resume-failed-visible">
+            <h2>ادامه نشست ممکن نشد</h2>
+            <p>لطفاً دوباره تلاش کنید یا صفحه را بارگذاری مجدد کنید.</p>
+        </div>
+
+        <div class="rc-actions">
+            <button id="components-reconnect-button" type="button" class="rc-btn rc-primary components-reconnect-failed-visible"><i class="bi bi-arrow-repeat"></i> تلاش دوباره</button>
+            <button id="components-resume-button" type="button" class="rc-btn rc-primary components-pause-visible components-resume-failed-visible"><i class="bi bi-play-fill"></i> ادامه</button>
+            <button type="button" class="rc-btn rc-light components-reconnect-failed-visible components-resume-failed-visible" id="components-reload-button">بارگذاری مجدد صفحه</button>
+        </div>
     </div>
 </dialog>

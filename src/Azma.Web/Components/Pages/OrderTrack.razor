@@ -6,26 +6,46 @@
 
 <PageTitle>پیگیری سفارش</PageTitle>
 
-<div class="page-header"><div class="container"><h1>پیگیری سفارش</h1></div></div>
+<div class="page-header">
+    <div class="container">
+        <h1><i class="bi bi-upc-scan ms-1"></i> پیگیری سفارش</h1>
+        <p>با کد رهگیری یا شماره سفارش و شماره موبایل، وضعیت سفارش خود را ببینید.</p>
+    </div>
+</div>
 <section class="section-sm">
-    <div class="container" style="max-width:520px">
-        <div class="az-card p-4">
-            <p class="text-muted">شماره سفارش یا کد پیگیری و شماره موبایلی را که هنگام ثبت سفارش وارد کرده‌اید بنویسید.</p>
-            <EditForm Model="Input" method="post" OnValidSubmit="SubmitAsync" FormName="track">
-                <DataAnnotationsValidator />
-                @if (notFound) { <div class="alert alert-warning">سفارشی با این مشخصات یافت نشد.</div> }
-                <div class="mb-3">
-                    <label class="form-label required" for="num">شماره سفارش یا کد پیگیری</label>
-                    <InputText id="num" class="form-control ltr" @bind-Value="Input.Number" />
-                    <ValidationMessage For="() => Input.Number" />
+    <div class="container" style="max-width:980px">
+        <div class="row g-4 align-items-start">
+            <div class="col-lg-6">
+                <div class="az-card az-card-lg p-4 p-md-5">
+                    <EditForm Model="Input" method="post" OnValidSubmit="SubmitAsync" FormName="track" data-once>
+                        <DataAnnotationsValidator />
+                        @if (notFound) { <div class="alert alert-warning d-flex gap-2"><i class="bi bi-search"></i> سفارشی با این مشخصات یافت نشد. شماره موبایلی را وارد کنید که هنگام خرید ثبت کرده‌اید.</div> }
+                        <div class="mb-3">
+                            <label class="form-label required" for="num">کد رهگیری یا شماره سفارش</label>
+                            <InputText id="num" class="form-control ltr" @bind-Value="Input.Number" placeholder="مثال: 050901-48213" autocomplete="off" />
+                            <ValidationMessage For="() => Input.Number" />
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label required" for="mob">شماره موبایل</label>
+                            <InputText id="mob" type="tel" class="form-control" @bind-Value="Input.Mobile" inputmode="tel" autocomplete="tel" placeholder="۰۹۱۲۱۲۳۴۵۶۷" />
+                            <ValidationMessage For="() => Input.Mobile" />
+                        </div>
+                        <button class="btn btn-gradient btn-lg w-100" type="submit"><i class="bi bi-search"></i> جست‌وجوی سفارش</button>
+                    </EditForm>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label required" for="mob">شماره موبایل</label>
-                    <InputText id="mob" type="tel" class="form-control" @bind-Value="Input.Mobile" inputmode="tel" />
-                    <ValidationMessage For="() => Input.Mobile" />
+            </div>
+            <div class="col-lg-6">
+                <div class="az-card az-card-lg p-4">
+                    <h2 class="h6 mb-3">کد رهگیری چیست؟</h2>
+                    <ul class="mini-steps">
+                        <li><i class="bi bi-hash"></i> <span><strong>شماره سفارش</strong> بلافاصله پس از ثبت سفارش به شما نمایش داده می‌شود.</span></li>
+                        <li><i class="bi bi-lightning-charge"></i> <span>در پرداخت آنلاین، <strong>کد رهگیری</strong> بلافاصله پس از پرداخت صادر می‌شود.</span></li>
+                        <li><i class="bi bi-receipt-cutoff"></i> <span>در کارت به کارت، کد رهگیری پس از تأیید رسید توسط مدیر صادر می‌شود.</span></li>
+                        <li><i class="bi bi-headset"></i> <span>با همین کدها می‌توانید <a href="/support">تیکت پشتیبانی</a> ثبت کنید.</span></li>
+                        <li><i class="bi bi-question-diamond"></i> <span>کد رهگیری را فراموش کرده‌اید؟ <a href="/support#lost-code">با شماره موبایل درخواست دهید</a>.</span></li>
+                    </ul>
                 </div>
-                <button class="btn btn-primary w-100" type="submit">جست‌وجوی سفارش</button>
-            </EditForm>
+            </div>
         </div>
     </div>
 </section>
@@ -45,7 +65,7 @@
 
     private sealed class TrackInput
     {
-        [Required(ErrorMessage = "شماره سفارش را وارد کنید."), StringLength(30)] public string Number { get; set; } = "";
+        [Required(ErrorMessage = "کد رهگیری یا شماره سفارش را وارد کنید."), StringLength(30)] public string Number { get; set; } = "";
         [Required(ErrorMessage = "شماره موبایل را وارد کنید."), StringLength(20)] public string Mobile { get; set; } = "";
     }
 }

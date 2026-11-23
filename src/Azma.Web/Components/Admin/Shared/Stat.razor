@@ -14,9 +14,11 @@
     [Parameter] public string Label { get; set; } = "";
     [Parameter] public string Value { get; set; } = "";
     [Parameter] public string? Href { get; set; }
+    /// <summary>Icon color: primary (default), success, warning, info, pink.</summary>
+    [Parameter] public string Tone { get; set; } = "primary";
 
     private RenderFragment Inner => @<text>
-        <div class="icon"><i class="bi @Icon"></i></div>
+        <div class="icon t-@Tone"><i class="bi @Icon"></i></div>
         <div><div class="label">@Label</div><div class="value">@Value</div></div>
     </text>;
 }
