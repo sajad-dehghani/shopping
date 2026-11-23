@@ -12,7 +12,8 @@ public static class SecurityHeaders
         h["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
         h["Content-Security-Policy"] =
             "default-src 'self'; " +
-            "img-src 'self' data: https://trustseal.enamad.ir; " +
+            // blob: = local preview of a selected file (receipt upload) created by our own script
+            "img-src 'self' data: blob: https://trustseal.enamad.ir; " +
             "style-src 'self' 'unsafe-inline'; " +
             "script-src 'self'; " +
             "font-src 'self'; " +
