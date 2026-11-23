@@ -1,0 +1,13 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "azma-web",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/Azma.Web", "-c", "Release", "--launch-profile", "http", "--no-build", "--",
+        "--ConnectionStrings:DefaultConnection=Server=.;Database=AzmaDb_Preview;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True",
+        "--Https:Redirect=false"],
+      "port": 5282
+    }
+  ]
+}
