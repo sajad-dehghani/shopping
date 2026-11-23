@@ -10,7 +10,7 @@
 
 @if (order is null)
 {
-    <p class="text-muted">@(loaded ? "سفارش یافت نشد." : "در حال بارگذاری...")</p>
+    @if (loaded) { <EmptyState Icon="bi-receipt" Title="سفارش یافت نشد" /> } else { <Loading /> }
     return;
 }
 

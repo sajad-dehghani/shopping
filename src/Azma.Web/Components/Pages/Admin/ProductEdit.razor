@@ -13,7 +13,7 @@
     <a href="/admin/products" class="btn btn-sm btn-light">بازگشت</a>
 </div>
 
-@if (model is null) { <p class="text-muted">در حال بارگذاری...</p> return; }
+@if (model is null) { <Loading /> return; }
 
 <EditForm Model="model" OnValidSubmit="SaveAsync">
     <DataAnnotationsValidator />

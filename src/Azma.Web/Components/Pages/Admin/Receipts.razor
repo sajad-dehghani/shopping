@@ -25,7 +25,7 @@
     </div>
 </div>
 
-@if (result is null) { <p class="text-muted">در حال بارگذاری...</p> return; }
+@if (result is null) { <Loading /> return; }
 @if (result.Items.Count == 0) { <div class="az-card p-4 text-center text-muted">رسیدی یافت نشد.</div> }
 
 <div class="row g-3">

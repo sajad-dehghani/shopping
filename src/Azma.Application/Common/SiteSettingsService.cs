@@ -33,6 +33,8 @@ public sealed class SiteSettingsService(IAppDbContextFactory dbFactory, IMemoryC
         db.SiteSettings.Entry(entity).CurrentValues.SetValues(input);
         entity.Id = SiteSettings.SingletonId;
         entity.SeatReservationMinutes = Math.Clamp(entity.SeatReservationMinutes, 5, 1440);
+        entity.SliderIntervalSeconds = Math.Clamp(entity.SliderIntervalSeconds, 3, 30);
+        entity.TermsText = string.IsNullOrWhiteSpace(entity.TermsText) ? null : entity.TermsText.Trim();
         entity.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
         cache.Remove(CacheKey);

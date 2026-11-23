@@ -26,6 +26,7 @@ public sealed class CheckoutService(
     {
         if (ValidateCustomer(input, out var mobile) is { } customerError) return Result<CheckoutResult>.Fail(customerError);
         var settings = await settingsService.GetAsync(ct);
+        if (!settings.CoursesEnabled) return Result<CheckoutResult>.Fail("ثبت‌نام دوره‌ها در حال حاضر غیرفعال است.");
 
         await using var db = await dbFactory.CreateAsync(ct);
         // Serializable: capacity check + insert must not interleave with another checkout for the same course.
@@ -89,6 +90,7 @@ public sealed class CheckoutService(
     {
         if (ValidateCustomer(input, out var mobile) is { } customerError) return Result<CheckoutResult>.Fail(customerError);
         if (input.Quantity is < 1 or > 20) return Result<CheckoutResult>.Fail("تعداد نامعتبر است.");
+        if (!(await settingsService.GetAsync(ct)).ShopEnabled) return Result<CheckoutResult>.Fail("فروشگاه در حال حاضر غیرفعال است.");
 
         await using var db = await dbFactory.CreateAsync(ct);
         var product = await db.Products.FirstOrDefaultAsync(p => p.Id == productId, ct);

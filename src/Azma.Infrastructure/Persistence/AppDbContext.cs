@@ -32,6 +32,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     public DbSet<SiteSettings> SiteSettings => Set<SiteSettings>();
     public DbSet<FaqItem> FaqItems => Set<FaqItem>();
     public DbSet<FeatureItem> FeatureItems => Set<FeatureItem>();
+    public DbSet<HeroSlide> HeroSlides => Set<HeroSlide>();
     public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
     public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>();
 

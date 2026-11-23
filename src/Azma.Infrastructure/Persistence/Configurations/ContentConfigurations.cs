@@ -58,6 +58,19 @@ public sealed class FeatureItemConfiguration : IEntityTypeConfiguration<FeatureI
     }
 }
 
+public sealed class HeroSlideConfiguration : IEntityTypeConfiguration<HeroSlide>
+{
+    public void Configure(EntityTypeBuilder<HeroSlide> b)
+    {
+        b.Property(x => x.Title).HasMaxLength(150);
+        b.Property(x => x.Subtitle).HasMaxLength(400);
+        b.Property(x => x.ImagePath).HasMaxLength(300).IsRequired();
+        b.Property(x => x.ButtonText).HasMaxLength(50);
+        b.Property(x => x.ButtonUrl).HasMaxLength(300);
+        b.HasIndex(x => new { x.IsActive, x.SortOrder });
+    }
+}
+
 public sealed class ContactMessageConfiguration : IEntityTypeConfiguration<ContactMessage>
 {
     public void Configure(EntityTypeBuilder<ContactMessage> b)

@@ -107,8 +107,88 @@
         });
     }
 
+    // ---- Hero slider (autoplay, dots, arrows, swipe; pauses on hover/focus/hidden tab) ----
+    var sliderTimer = null;
+    function initSlider() {
+        if (sliderTimer) { clearInterval(sliderTimer); sliderTimer = null; }
+        var root = document.querySelector(".hero-slider");
+        if (!root) return;
+        var slides = root.querySelectorAll(".hero-slide");
+        var dots = root.querySelectorAll(".hero-dots button");
+        if (slides.length < 2) return;
+        var interval = Math.max(3, parseInt(root.getAttribute("data-interval"), 10) || 6) * 1000;
+        root.style.setProperty("--hero-interval", interval / 1000 + "s");
+        var index = 0, paused = false;
+        function show(i) {
+            index = (i + slides.length) % slides.length;
+            slides.forEach(function (s, n) {
+                var on = n === index;
+                s.classList.toggle("is-active", on);
+                s.setAttribute("aria-hidden", on ? "false" : "true");
+                s.querySelectorAll("a,button").forEach(function (el) { if (on) el.removeAttribute("tabindex"); else el.setAttribute("tabindex", "-1"); });
+            });
+            dots.forEach(function (d, n) {
+                d.classList.remove("is-active");
+                if (n === index) { void d.offsetWidth; d.classList.add("is-active"); }
+                d.setAttribute("aria-current", n === index ? "true" : "false");
+            });
+        }
+        function restart() {
+            if (sliderTimer) clearInterval(sliderTimer);
+            if (reduceMotion) return;
+            sliderTimer = setInterval(function () { if (!paused && !document.hidden) show(index + 1); }, interval);
+        }
+        function setPaused(p) { paused = p; root.classList.toggle("is-paused", p); }
+        if (!root.hasAttribute("data-ready")) {
+            root.setAttribute("data-ready", "");
+            dots.forEach(function (d, n) { d.addEventListener("click", function () { show(n); restart(); }); });
+            var prev = root.querySelector("[data-slide=prev]"), next = root.querySelector("[data-slide=next]");
+            if (prev) prev.addEventListener("click", function () { show(index - 1); restart(); });
+            if (next) next.addEventListener("click", function () { show(index + 1); restart(); });
+            root.addEventListener("mouseenter", function () { setPaused(true); });
+            root.addEventListener("mouseleave", function () { setPaused(false); });
+            root.addEventListener("focusin", function () { setPaused(true); });
+            root.addEventListener("focusout", function () { setPaused(false); });
+            root.addEventListener("keydown", function (e) {
+                // RTL: the right arrow goes to the previous slide
+                if (e.key === "ArrowLeft") { show(index + 1); restart(); }
+                else if (e.key === "ArrowRight") { show(index - 1); restart(); }
+            });
+            var x0 = null;
+            root.addEventListener("touchstart", function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+            root.addEventListener("touchend", function (e) {
+                if (x0 === null) return;
+                var dx = e.changedTouches[0].clientX - x0; x0 = null;
+                if (Math.abs(dx) > 40) { show(dx > 0 ? index + 1 : index - 1); restart(); }
+            }, { passive: true });
+        }
+        show(0);
+        restart();
+    }
+
+    // ---- Thin progress bar while a page or form submit is loading ----
+    var bar = null;
+    function progressStart() {
+        if (!bar) { bar = document.createElement("div"); bar.className = "nav-progress"; bar.setAttribute("aria-hidden", "true"); document.body.appendChild(bar); }
+        bar.classList.remove("is-active"); void bar.offsetWidth; bar.classList.add("is-active");
+    }
+    function progressDone() { if (bar) bar.classList.remove("is-active"); }
+    document.addEventListener("click", function (e) {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        var a = e.target.closest ? e.target.closest("a[href]") : null;
+        if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
+        var url;
+        try { url = new URL(a.href, location.href); } catch (_) { return; }
+        if (url.origin !== location.origin || (url.pathname === location.pathname && url.search === location.search)) return;
+        progressStart();
+    });
+    document.addEventListener("submit", function (e) { if (!e.defaultPrevented) progressStart(); });
+    window.addEventListener("pageshow", progressDone);
+
     function init() {
         document.documentElement.classList.remove("no-js");
+        progressDone();
+        initSlider();
         header = document.querySelector(".site-header");
         onScroll();
         initReveal();

@@ -1,0 +1,76 @@
+@* Visual icon chooser (Bootstrap Icons). Binds the icon class name, e.g. "bi-award". *@
+<div class="icon-picker">
+    <button type="button" class="icon-picker-btn" @onclick="Toggle" aria-expanded="@open" title="انتخاب آیکون">
+        <i class="bi @(string.IsNullOrEmpty(Value) ? "bi-question-circle" : Value)"></i>
+        <i class="bi bi-chevron-down caret"></i>
+    </button>
+    @if (open)
+    {
+        <div class="icon-picker-backdrop" @onclick="() => open = false"></div>
+        <div class="icon-picker-pop" role="dialog" aria-label="انتخاب آیکون">
+            <input class="form-control form-control-sm mb-2" placeholder="جست‌وجو: پشتیبانی، کتاب، امنیت..." @bind="filter" @bind:event="oninput" />
+            <div class="icon-grid">
+                @foreach (var icon in Filtered)
+                {
+                    <button type="button" class="@(icon.Name == Value ? "active" : null)" title="@icon.Label" @onclick="() => PickAsync(icon.Name)">
+                        <i class="bi @icon.Name"></i>
+                    </button>
+                }
+                @if (!Filtered.Any()) { <div class="small text-muted p-2">آیکونی یافت نشد.</div> }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    private bool open;
+    private string? filter;
+
+    private void Toggle() { open = !open; filter = null; }
+
+    private async Task PickAsync(string name)
+    {
+        open = false;
+        await ValueChanged.InvokeAsync(name);
+    }
+
+    private IEnumerable<IconOption> Filtered => string.IsNullOrWhiteSpace(filter)
+        ? Icons
+        : Icons.Where(i => i.Label.Contains(filter.Trim()) || i.Name.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    private sealed record IconOption(string Name, string Label);
+
+    private static readonly IconOption[] Icons =
+    [
+        new("bi-award", "گواهی جایزه مدرک"), new("bi-patch-check", "تأیید معتبر"), new("bi-shield-check", "امنیت امن"),
+        new("bi-shield-lock", "امنیت قفل"), new("bi-lock", "قفل امن"), new("bi-headset", "پشتیبانی"),
+        new("bi-life-preserver", "پشتیبانی کمک"), new("bi-chat-dots", "گفتگو پیام"), new("bi-telephone", "تلفن تماس"),
+        new("bi-person-video3", "مدرس استاد"), new("bi-person-check", "کاربر تأیید"), new("bi-people", "گروه افراد"),
+        new("bi-mortarboard", "آموزش دانشگاه"), new("bi-journal-bookmark", "دوره کتاب"), new("bi-book", "کتاب"),
+        new("bi-book-half", "کتاب مطالعه"), new("bi-easel", "کلاس ارائه"), new("bi-laptop", "لپ‌تاپ آنلاین"),
+        new("bi-display", "آنلاین مانیتور"), new("bi-camera-video", "ویدیو فیلم"), new("bi-play-circle", "پخش ویدیو"),
+        new("bi-mic", "صدا پادکست"), new("bi-kanban", "پروژه"), new("bi-code-slash", "برنامه‌نویسی کد"),
+        new("bi-cpu", "فناوری"), new("bi-lightbulb", "ایده خلاقیت"), new("bi-lightning-charge", "سریع فوری"),
+        new("bi-rocket-takeoff", "پیشرفت رشد"), new("bi-graph-up-arrow", "رشد نمودار"), new("bi-bar-chart", "آمار نمودار"),
+        new("bi-trophy", "موفقیت جام"), new("bi-star", "ستاره ویژه"), new("bi-stars", "ویژه"),
+        new("bi-heart", "قلب علاقه"), new("bi-hand-thumbs-up", "رضایت لایک"), new("bi-emoji-smile", "رضایت لبخند"),
+        new("bi-gem", "ارزشمند الماس"), new("bi-gift", "هدیه"), new("bi-percent", "تخفیف درصد"),
+        new("bi-tag", "برچسب قیمت"), new("bi-cash-coin", "پول قیمت"), new("bi-wallet2", "کیف پول پرداخت"),
+        new("bi-credit-card", "کارت پرداخت"), new("bi-bank", "بانک"), new("bi-receipt", "رسید فاکتور"),
+        new("bi-bag", "خرید کیف"), new("bi-bag-heart", "خرید فروشگاه"), new("bi-cart", "سبد خرید"),
+        new("bi-box-seam", "محصول بسته"), new("bi-truck", "ارسال حمل"), new("bi-geo-alt", "مکان آدرس"),
+        new("bi-clock", "زمان ساعت"), new("bi-calendar-check", "تقویم زمان‌بندی"), new("bi-hourglass-split", "زمان انتظار"),
+        new("bi-check2-circle", "تیک تأیید"), new("bi-check2-all", "تأیید کامل"), new("bi-list-check", "فهرست چک"),
+        new("bi-clipboard-check", "آزمون بررسی"), new("bi-pencil-square", "نوشتن ویرایش"), new("bi-file-earmark-text", "فایل جزوه"),
+        new("bi-download", "دانلود"), new("bi-cloud-check", "ابری"), new("bi-globe", "جهانی وب"),
+        new("bi-translate", "زبان ترجمه"), new("bi-palette", "طراحی هنر"), new("bi-brush", "هنر نقاشی"),
+        new("bi-camera", "عکاسی دوربین"), new("bi-music-note-beamed", "موسیقی"), new("bi-briefcase", "کار شغل"),
+        new("bi-building", "شرکت سازمان"), new("bi-house", "خانه"), new("bi-infinity", "نامحدود دائمی"),
+        new("bi-arrow-repeat", "تکرار بازگشت"), new("bi-arrow-counterclockwise", "بازگشت وجه"), new("bi-bell", "اطلاع‌رسانی"),
+        new("bi-envelope", "ایمیل"), new("bi-upc-scan", "کد رهگیری"), new("bi-search", "جست‌وجو"),
+        new("bi-compass", "راهنما مسیر"), new("bi-signpost-2", "مسیر راهنما"), new("bi-puzzle", "حل مسئله"),
+        new("bi-tools", "ابزار"), new("bi-gear", "تنظیمات"), new("bi-wifi", "اینترنت"),
+    ];
+}

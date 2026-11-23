@@ -1,0 +1,13 @@
+<div class="az-empty">
+    <span class="az-empty-icon"><i class="bi @Icon"></i></span>
+    <h3>@Title</h3>
+    @if (!string.IsNullOrEmpty(Text)) { <p>@Text</p> }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "bi-inbox";
+    [Parameter] public string Title { get; set; } = "موردی یافت نشد";
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

@@ -8,39 +8,57 @@
 @{
     var s = data.Settings;
     var cardEnabled = s.CardToCardEnabled && !string.IsNullOrWhiteSpace(s.CardNumber);
-    var methods = (s.PaymentEnabled ? 1 : 0) + (cardEnabled ? 1 : 0);
 }
 
-<!-- ===== Hero ===== -->
-<section class="hero">
+<!-- ===== Hero slider (managed in admin: /admin/slides) ===== -->
+<section class="hero-slider-wrap">
     <div class="container">
-        <div class="row align-items-center g-4 g-lg-5">
-            <div class="col-lg-6 hero-anim">
-                <span class="eyebrow"><span class="dot"></span> @s.SiteName · خرید بدون نیاز به ثبت‌نام</span>
-                <h1>@(s.HeroTitle ?? "دوره‌ها و محصولات آموزشی") <span class="text-gradient">در چند کلیک</span></h1>
-                @if (!string.IsNullOrEmpty(s.HeroText)) { <p class="lead mt-3">@s.HeroText</p> }
-                <div class="hero-cta">
-                    <a href="/courses" class="btn btn-gradient btn-lg"><i class="bi bi-journal-bookmark"></i> مشاهده دوره‌ها</a>
-                    <a href="/products" class="btn btn-light btn-lg"><i class="bi bi-bag"></i> فروشگاه محصولات</a>
-                </div>
-                <div class="hero-trust">
-                    <span><i class="bi bi-patch-check-fill"></i> بدون نیاز به ساخت حساب کاربری</span>
-                    <span><i class="bi bi-patch-check-fill"></i> کد رهگیری برای هر سفارش</span>
-                    <span><i class="bi bi-patch-check-fill"></i> پشتیبانی تیکتی</span>
-                </div>
-            </div>
-            <div class="col-lg-6 hero-anim" style="--d:.15s">
-                <div class="hero-visual" aria-hidden="true">
-                    <div class="hero-blob"></div>
-                    <div class="hero-photo">
-                        @if (!string.IsNullOrEmpty(s.HeroImagePath)) { <img src="@s.HeroImagePath" alt="" width="600" height="600" fetchpriority="high" /> }
-                        else { <div class="thumb-fallback"><i class="bi bi-bag-heart"></i></div> }
+        <div class="hero-slider" data-interval="@s.SliderIntervalSeconds" data-slides="@slides.Count" aria-roledescription="carousel" aria-label="معرفی @s.SiteName" tabindex="0">
+            @for (var n = 0; n < slides.Count; n++)
+            {
+                var sl = slides[n];
+                var first = n == 0;
+                <div class="hero-slide @(first ? "is-active" : null)" role="group" aria-roledescription="slide" aria-label="@Persian.Digits(n + 1) از @Persian.Digits(slides.Count)" aria-hidden="@(first ? "false" : "true")">
+                    <div class="hero-slide-bg @(string.IsNullOrEmpty(sl.Image) ? "no-img" : null)">
+                        @if (!string.IsNullOrEmpty(sl.Image))
+                        {
+                            <img src="@sl.Image" alt="" width="1600" height="700" loading="@(first ? "eager" : "lazy")" fetchpriority="@(first ? "high" : "auto")" decoding="async" />
+                        }
                     </div>
-                    <div class="float-card fc-1"><span class="fc-icon fc-green"><i class="bi bi-check2-circle"></i></span><span>پرداخت موفق<small>کد رهگیری صادر شد</small></span></div>
-                    <div class="float-card fc-2"><span class="fc-icon fc-amber"><i class="bi bi-credit-card-2-front"></i></span><span>کارت به کارت<small>رسید تأیید شد</small></span></div>
-                    <div class="float-card fc-3"><span class="fc-icon fc-indigo"><i class="bi bi-headset"></i></span><span>پاسخ تیکت<small>تیم پشتیبانی آزما</small></span></div>
+                    <div class="hero-slide-body">
+                        <span class="eyebrow"><span class="dot"></span> @s.SiteName · خرید بدون نیاز به ثبت‌نام</span>
+                        @if (first) { <h1>@sl.Title</h1> } else { <h2>@sl.Title</h2> }
+                        @if (!string.IsNullOrEmpty(sl.Text)) { <p>@sl.Text</p> }
+                        <div class="hero-cta">
+                            @if (!string.IsNullOrEmpty(sl.ButtonText) && !string.IsNullOrEmpty(sl.ButtonUrl))
+                            {
+                                <a href="@sl.ButtonUrl" class="btn btn-gradient btn-lg" tabindex="@(first ? null : "-1")">@sl.ButtonText <i class="bi bi-arrow-left"></i></a>
+                            }
+                            else
+                            {
+                                if (s.CoursesEnabled) { <a href="/courses" class="btn btn-gradient btn-lg" tabindex="@(first ? null : "-1")"><i class="bi bi-journal-bookmark"></i> مشاهده دوره‌ها</a> }
+                                if (s.ShopEnabled) { <a href="/products" class="btn @(s.CoursesEnabled ? "btn-light" : "btn-gradient") btn-lg" tabindex="@(first ? null : "-1")"><i class="bi bi-bag"></i> فروشگاه محصولات</a> }
+                            }
+                            <a href="/order/track" class="btn btn-light btn-lg d-none d-md-inline-flex" tabindex="@(first ? null : "-1")"><i class="bi bi-upc-scan"></i> پیگیری سفارش</a>
+                        </div>
+                    </div>
                 </div>
+            }
+            <div class="hero-nav">
+                <button type="button" class="hero-arrow" data-slide="prev" aria-label="اسلاید قبلی"><i class="bi bi-chevron-right"></i></button>
+                <div class="hero-dots">
+                    @for (var n = 0; n < slides.Count; n++)
+                    {
+                        <button type="button" class="@(n == 0 ? "is-active" : null)" aria-label="اسلاید @Persian.Digits(n + 1)"></button>
+                    }
+                </div>
+                <button type="button" class="hero-arrow" data-slide="next" aria-label="اسلاید بعدی"><i class="bi bi-chevron-left"></i></button>
             </div>
+        </div>
+        <div class="trust-strip">
+            <span><i class="bi bi-patch-check-fill"></i> بدون نیاز به ساخت حساب کاربری</span>
+            <span><i class="bi bi-patch-check-fill"></i> کد رهگیری برای هر سفارش</span>
+            <span><i class="bi bi-patch-check-fill"></i> پشتیبانی تیکتی</span>
         </div>
     </div>
 </section>
@@ -49,10 +67,10 @@
 <section class="stats-strip">
     <div class="container">
         <div class="stats-card reveal">
-            <div class="stat-item"><i class="bi bi-journal-bookmark"></i><span class="num" data-count="@data.Courses.Count">@Persian.Digits(data.Courses.Count)</span><span class="lbl">دوره فعال</span></div>
-            <div class="stat-item"><i class="bi bi-box-seam"></i><span class="num" data-count="@data.Products.Count">@Persian.Digits(data.Products.Count)</span><span class="lbl">محصول آموزشی</span></div>
-            <div class="stat-item"><i class="bi bi-person-video3"></i><span class="num" data-count="@data.Instructors.Count">@Persian.Digits(data.Instructors.Count)</span><span class="lbl">مدرس متخصص</span></div>
-            <div class="stat-item"><i class="bi bi-wallet2"></i><span class="num" data-count="@methods">@Persian.Digits(methods)</span><span class="lbl">روش پرداخت امن</span></div>
+            @if (s.CoursesEnabled) { <div class="stat-item"><i class="bi bi-journal-bookmark"></i><span class="num" data-count="@data.Courses.Count">@Persian.Digits(data.Courses.Count)</span><span class="lbl">دوره فعال</span></div> }
+            @if (s.ShopEnabled) { <div class="stat-item"><i class="bi bi-box-seam"></i><span class="num" data-count="@data.Products.Count">@Persian.Digits(data.Products.Count)</span><span class="lbl">محصول آموزشی</span></div> }
+            <div class="stat-item"><i class="bi bi-upc-scan"></i><span class="num txt">آنلاین</span><span class="lbl">پیگیری با کد رهگیری</span></div>
+            <div class="stat-item"><i class="bi bi-headset"></i><span class="num txt">تیکتی</span><span class="lbl">پشتیبانی سفارش‌ها</span></div>
         </div>
     </div>
 </section>
@@ -69,7 +87,7 @@
             <div class="journey-line"><span></span></div>
             <div class="journey-step">
                 <div class="journey-icon"><i class="bi bi-hand-index-thumb"></i></div>
-                <div><h3>انتخاب دوره یا محصول</h3><p>دوره یا محصول دلخواه را از فروشگاه انتخاب کنید.</p></div>
+                <div><h3>انتخاب @(s.CoursesEnabled && s.ShopEnabled ? "دوره یا محصول" : s.CoursesEnabled ? "دوره" : "محصول")</h3><p>@(s.CoursesEnabled && s.ShopEnabled ? "دوره یا محصول دلخواه" : s.CoursesEnabled ? "دوره دلخواه" : "محصول دلخواه") را انتخاب کنید.</p></div>
             </div>
             <div class="journey-step">
                 <div class="journey-icon"><i class="bi bi-person-vcard"></i></div>
@@ -87,7 +105,7 @@
     </div>
 </section>
 
-@if (data.Courses.Count > 0)
+@if (s.CoursesEnabled && data.Courses.Count > 0)
 {
     <section class="section section-white" id="courses">
         <div class="container">
@@ -157,7 +175,7 @@
     </div>
 </section>
 
-@if (data.Products.Count > 0)
+@if (s.ShopEnabled && data.Products.Count > 0)
 {
     <section class="section">
         <div class="container">
@@ -295,6 +313,16 @@
 
 @code {
     private HomePageData? data;
+    private List<SlideView> slides = [];
 
-    protected override async Task OnInitializedAsync() => data = await Catalog.GetHomeAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        data = await Catalog.GetHomeAsync();
+        var st = data.Settings;
+        slides = data.Slides.Select(x => new SlideView(x.ImagePath, x.Title ?? st.HeroTitle ?? st.SiteName, x.Subtitle, x.ButtonText, x.ButtonUrl)).ToList();
+        if (slides.Count == 0)
+            slides.Add(new SlideView(st.HeroImagePath, st.HeroTitle ?? "دوره‌ها و محصولات آموزشی در چند کلیک", st.HeroText, null, null));
+    }
+
+    private sealed record SlideView(string? Image, string Title, string? Text, string? ButtonText, string? ButtonUrl);
 }

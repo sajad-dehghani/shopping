@@ -626,6 +626,48 @@ namespace Azma.Infrastructure.Persistence.Migrations
                     b.ToTable("FeatureItems");
                 });
 
+            modelBuilder.Entity("Azma.Domain.Content.HeroSlide", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ButtonText")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ButtonUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("ImagePath")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Subtitle")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive", "SortOrder");
+
+                    b.ToTable("HeroSlides");
+                });
+
             modelBuilder.Entity("Azma.Domain.Content.SiteSettings", b =>
                 {
                     b.Property<int>("Id")
@@ -657,6 +699,9 @@ namespace Azma.Infrastructure.Persistence.Migrations
                         .HasColumnType("varchar(30)");
 
                     b.Property<bool>("CardToCardEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("CoursesEnabled")
                         .HasColumnType("bit");
 
                     b.Property<string>("Email")
@@ -715,6 +760,9 @@ namespace Azma.Infrastructure.Persistence.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(40)");
 
+                    b.Property<bool>("ShopEnabled")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("ShowInstructorsOnHome")
                         .HasColumnType("bit");
 
@@ -722,6 +770,9 @@ namespace Azma.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SliderIntervalSeconds")
+                        .HasColumnType("int");
 
                     b.Property<string>("SupportMobile")
                         .HasMaxLength(30)

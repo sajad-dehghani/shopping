@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Azma.Application;
+using Azma.Application.Common;
 using Azma.Infrastructure;
 using Azma.Infrastructure.Files;
 using Azma.Infrastructure.Identity;
@@ -136,6 +137,24 @@ if (!app.Environment.IsDevelopment())
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 if (app.Configuration.GetValue("Https:Redirect", true)) app.UseHttpsRedirection();
 app.UseSecurityHeaders();
+
+// Sections switched off in admin settings behave as if they do not exist (404 page).
+app.Use(async (ctx, next) =>
+{
+    var path = ctx.Request.Path;
+    var isCourses = path.StartsWithSegments("/courses");
+    var isShop = path.StartsWithSegments("/products");
+    if (isCourses || isShop)
+    {
+        var s = await ctx.RequestServices.GetRequiredService<SiteSettingsService>().GetAsync(ctx.RequestAborted);
+        if ((isCourses && !s.CoursesEnabled) || (isShop && !s.ShopEnabled))
+        {
+            ctx.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+    }
+    await next();
+});
 
 var uploads = app.Services.GetRequiredService<IOptions<FileStorageOptions>>().Value.UploadsPath;
 Directory.CreateDirectory(uploads);

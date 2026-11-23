@@ -21,8 +21,8 @@
 
   <ItemGroup>
     <!-- runtime uploads never ship with the build -->
-    <Content Remove="uploads\**;keys\**" />
-    <None Remove="uploads\**;keys\**" />
+    <Content Remove="uploads\**;private-uploads\**;keys\**" />
+    <None Remove="uploads\**;private-uploads\**;keys\**" />
   </ItemGroup>
 
 </Project>

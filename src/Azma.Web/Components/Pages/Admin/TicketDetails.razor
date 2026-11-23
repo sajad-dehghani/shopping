@@ -8,7 +8,7 @@
 
 @if (ticket is null)
 {
-    <p class="text-muted">@(loaded ? "تیکت یافت نشد." : "در حال بارگذاری...")</p>
+    @if (loaded) { <EmptyState Icon="bi-life-preserver" Title="تیکت یافت نشد" /> } else { <Loading /> }
     return;
 }
 
@@ -65,6 +65,37 @@
                 <li><span class="k">ثبت</span><span class="v">@Persian.ToJalali(Clock.ToLocal(ticket.CreatedAt), true)</span></li>
             </ul>
         </div>
+        <div class="az-card p-3 mt-3">
+            <h2 class="h6 mb-1"><i class="bi bi-search ms-1"></i> سفارش‌های این شماره موبایل</h2>
+            <p class="small text-muted mb-2">برای پیدا کردن کد رهگیری فراموش‌شده، سفارش را با نام و محصول تطبیق دهید و کد را در پاسخ بنویسید.</p>
+            @if (mobileOrders.Count == 0)
+            {
+                <div class="small text-muted">سفارشی با این شماره ثبت نشده است.</div>
+            }
+            else
+            {
+                <div class="mini-orders">
+                    @foreach (var mo in mobileOrders)
+                    {
+                        <div class="mini-order">
+                            <div class="d-flex justify-content-between gap-2">
+                                <a href="/admin/orders/@mo.Id" class="ltr fw-semibold">@mo.OrderNumber</a>
+                                <OrderStatusBadge Status="mo.Status" />
+                            </div>
+                            <div class="small text-muted text-truncate">@mo.FirstItem · @mo.CustomerName</div>
+                            <div class="d-flex justify-content-between align-items-center small mt-1">
+                                <span>@Persian.ToJalali(Clock.ToLocal(mo.CreatedAt))</span>
+                                @if (mo.TrackingCode is { } tc)
+                                {
+                                    <button type="button" class="btn btn-sm btn-light py-0" title="افزودن کد به متن پاسخ" @onclick="() => InsertCode(mo)"><i class="bi bi-upc-scan"></i> <span class="ltr">@tc</span></button>
+                                }
+                                else { <span class="text-muted">بدون کد رهگیری</span> }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
     </div>
 </div>
 
@@ -73,12 +104,14 @@
     private Ticket? ticket;
     private bool loaded;
     private string? reply;
+    private IReadOnlyList<MobileOrderRow> mobileOrders = [];
 
     protected override Task OnParametersSetAsync() => LoadAsync();
 
     private async Task LoadAsync()
     {
         ticket = await TicketsSvc.GetAsync(Id);
+        mobileOrders = ticket is null ? [] : await TicketsSvc.OrdersForMobileAsync(ticket.Mobile);
         loaded = true;
     }
 
@@ -91,6 +124,12 @@
             if (r.Succeeded) { ShowOk("پاسخ ثبت شد."); reply = null; await LoadAsync(); } else ShowError(r.Error);
         }
         finally { Busy = false; }
+    }
+
+    private void InsertCode(MobileOrderRow o)
+    {
+        var line = $"کد رهگیری سفارش {o.OrderNumber} ({o.FirstItem}): {o.TrackingCode}";
+        reply = string.IsNullOrWhiteSpace(reply) ? $"سلام، وقت بخیر.\n{line}\nبا این کد می‌توانید سفارش خود را در بخش «پیگیری سفارش» دنبال کنید." : reply + "\n" + line;
     }
 
     private async Task SetStatusAsync(TicketStatus s)

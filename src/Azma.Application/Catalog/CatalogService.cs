@@ -19,9 +19,9 @@ public sealed class CatalogService(IAppDbContextFactory dbFactory, ISiteClock cl
         var courseQuery = db.Courses.AsNoTracking()
             .Where(c => c.Status == PublishStatus.Published && (c.EndDate == null || c.EndDate >= today))
             .OrderByDescending(c => c.IsFeatured).ThenBy(c => c.SortOrder).ThenBy(c => c.StartDate);
-        var courses = await ToCourseCards(courseQuery.Take(6)).ToListAsync(ct);
+        List<CourseCard> courses = settings.CoursesEnabled ? await ToCourseCards(courseQuery.Take(6)).ToListAsync(ct) : [];
 
-        var products = await ToProductCards(db.Products.AsNoTracking()
+        List<ProductCard> products = !settings.ShopEnabled ? [] : await ToProductCards(db.Products.AsNoTracking()
                 .Where(p => p.Status == PublishStatus.Published)
                 .OrderByDescending(p => p.IsFeatured).ThenBy(p => p.SortOrder).ThenByDescending(p => p.Id)
                 .Take(8))
@@ -39,6 +39,7 @@ public sealed class CatalogService(IAppDbContextFactory dbFactory, ISiteClock cl
             Instructors = instructors,
             Features = await db.FeatureItems.AsNoTracking().Where(f => f.IsActive).OrderBy(f => f.SortOrder).ToListAsync(ct),
             Faqs = await db.FaqItems.AsNoTracking().Where(f => f.IsActive).OrderBy(f => f.SortOrder).ToListAsync(ct),
+            Slides = await db.HeroSlides.AsNoTracking().Where(h => h.IsActive).OrderBy(h => h.SortOrder).ThenBy(h => h.Id).Take(10).ToListAsync(ct),
         };
     }
 

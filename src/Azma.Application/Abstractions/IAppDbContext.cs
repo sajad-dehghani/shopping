@@ -29,6 +29,7 @@ public interface IAppDbContext : IAsyncDisposable, IDisposable
     DbSet<SiteSettings> SiteSettings { get; }
     DbSet<FaqItem> FaqItems { get; }
     DbSet<FeatureItem> FeatureItems { get; }
+    DbSet<HeroSlide> HeroSlides { get; }
     DbSet<ContactMessage> ContactMessages { get; }
     DbSet<AdminAuditLog> AdminAuditLogs { get; }
 

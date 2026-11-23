@@ -11,9 +11,12 @@ namespace Azma.Application.Support;
 
 public sealed class NewTicketInput
 {
-    [Required(ErrorMessage = "کد رهگیری یا شماره سفارش را وارد کنید.")]
+    /// <summary>Tracking code or order number. Not needed when <see cref="LostCode"/> is set.</summary>
     [StringLength(30)]
-    public string Code { get; set; } = "";
+    public string? Code { get; set; }
+
+    /// <summary>The customer forgot their tracking code: the ticket is opened without an order and support looks it up by mobile.</summary>
+    public bool LostCode { get; set; }
 
     [Required(ErrorMessage = "نام و نام خانوادگی را وارد کنید.")]
     [StringLength(100, MinimumLength = 3, ErrorMessage = "نام و نام خانوادگی باید بین ۳ تا ۱۰۰ حرف باشد.")]
@@ -39,24 +42,45 @@ public sealed class TicketReplyInput
     public string Message { get; set; } = "";
 }
 
+public sealed record MobileOrderRow(int Id, string OrderNumber, string? TrackingCode, string CustomerName,
+    Azma.Domain.Sales.OrderStatus Status, long TotalAmount, DateTime CreatedAt, string? FirstItem);
+
 public sealed record TicketRow(int Id, string TicketNumber, string Subject, string FullName, string Mobile, string? OrderNumber,
     TicketStatus Status, DateTime CreatedAt, DateTime LastActivityAt, int MessageCount);
 
 /// <summary>Support tickets for guest customers. A ticket must reference an existing order (by tracking code or order number) whose mobile matches.</summary>
 public sealed class TicketService(IAppDbContextFactory dbFactory, ISiteClock clock, IAuditLogger audit, ILogger<TicketService> logger)
 {
+    public const string LostCodeSubject = "فراموشی کد رهگیری";
+
+    /// <summary>Orders placed with a mobile number; shown to staff on tickets so they can find a customer's lost tracking code.</summary>
+    public async Task<IReadOnlyList<MobileOrderRow>> OrdersForMobileAsync(string mobile, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateAsync(ct);
+        return await db.Orders.AsNoTracking().Where(o => o.Mobile == mobile)
+            .OrderByDescending(o => o.Id).Take(20)
+            .Select(o => new MobileOrderRow(o.Id, o.OrderNumber, o.TrackingCode, o.CustomerName, o.Status, o.TotalAmount, o.CreatedAt,
+                o.Items.Select(i => i.Title).FirstOrDefault()))
+            .ToListAsync(ct);
+    }
+
     public async Task<Result<Guid>> CreateAsync(NewTicketInput input, CancellationToken ct = default)
     {
         if (Validate(input) is { } error) return Result<Guid>.Fail(error);
         var mobile = Persian.NormalizeMobile(input.Mobile);
         if (mobile is null) return Result<Guid>.Fail("شماره موبایل معتبر نیست (مثال: ۰۹۱۲۱۲۳۴۵۶۷).");
-        var code = Persian.NormalizeDigits(input.Code).Trim();
+        var code = Persian.NormalizeDigits(input.Code ?? "").Trim();
+        if (!input.LostCode && code.Length == 0) return Result<Guid>.Fail("کد رهگیری یا شماره سفارش را وارد کنید.");
 
         await using var db = await dbFactory.CreateAsync(ct);
-        var order = await db.Orders.Where(o => (o.TrackingCode == code || o.OrderNumber == code) && o.Mobile == mobile)
-            .Select(o => new { o.Id }).FirstOrDefaultAsync(ct);
-        if (order is null)
-            return Result<Guid>.Fail("سفارشی با این کد رهگیری / شماره سفارش و شماره موبایل یافت نشد. شماره موبایلی را وارد کنید که هنگام خرید ثبت کرده‌اید.");
+        int? orderId = null;
+        if (!input.LostCode)
+        {
+            orderId = await db.Orders.Where(o => (o.TrackingCode == code || o.OrderNumber == code) && o.Mobile == mobile)
+                .Select(o => (int?)o.Id).FirstOrDefaultAsync(ct);
+            if (orderId is null)
+                return Result<Guid>.Fail("سفارشی با این کد رهگیری / شماره سفارش و شماره موبایل یافت نشد. شماره موبایلی را وارد کنید که هنگام خرید ثبت کرده‌اید، یا گزینه «کد رهگیری را فراموش کرده‌ام» را انتخاب کنید.");
+        }
 
         var openCount = await db.Tickets.CountAsync(t => t.Mobile == mobile && t.Status != TicketStatus.Closed, ct);
         if (openCount >= 5) return Result<Guid>.Fail("شما چند تیکت باز دارید. لطفاً از همان تیکت‌ها پیگیری کنید.");
@@ -65,10 +89,10 @@ public sealed class TicketService(IAppDbContextFactory dbFactory, ISiteClock clo
         var ticket = new Ticket
         {
             TicketNumber = await NewNumberAsync(db, ct),
-            OrderId = order.Id,
+            OrderId = orderId,
             FullName = Persian.NormalizeText(input.FullName),
             Mobile = mobile,
-            Subject = Persian.NormalizeText(input.Subject),
+            Subject = input.LostCode ? LostCodeSubject : Persian.NormalizeText(input.Subject),
             Status = TicketStatus.Open,
             CreatedAt = now,
             LastActivityAt = now,
@@ -76,7 +100,7 @@ public sealed class TicketService(IAppDbContextFactory dbFactory, ISiteClock clo
         };
         db.Tickets.Add(ticket);
         await db.SaveChangesAsync(ct);
-        logger.LogInformation("Ticket {Number} created for order {OrderId}", ticket.TicketNumber, order.Id);
+        logger.LogInformation("Ticket {Number} created for order {OrderId}", ticket.TicketNumber, orderId);
         return Result<Guid>.Ok(ticket.PublicId);
     }
 

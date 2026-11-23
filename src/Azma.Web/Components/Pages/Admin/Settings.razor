@@ -9,7 +9,7 @@
 <AdminToast Message="@ToastMessage" IsError="ToastIsError" OnClose="ClearToast" />
 <div class="admin-page-title"><h1>تنظیمات سایت</h1></div>
 
-@if (model is null) { <p class="text-muted">در حال بارگذاری...</p> return; }
+@if (model is null) { <Loading /> return; }
 
 <EditForm Model="model" OnValidSubmit="SaveAsync">
     <div class="row g-3">
@@ -22,7 +22,11 @@
                     <div class="col-12"><label class="form-label">عنوان بخش معرفی (صفحه اصلی)</label><InputText class="form-control" @bind-Value="model.HeroTitle" maxlength="200" /></div>
                     <div class="col-12"><label class="form-label">متن بخش معرفی</label><InputTextArea class="form-control" rows="3" @bind-Value="model.HeroText" maxlength="1000" /></div>
                     <div class="col-12"><label class="form-label">متن درباره ما</label><InputTextArea class="form-control" rows="5" @bind-Value="model.AboutText" maxlength="4000" /></div>
-                    <div class="col-12"><label class="form-label">قوانین و مقررات</label><InputTextArea class="form-control" rows="5" @bind-Value="model.TermsText" maxlength="10000" /></div>
+                    <div class="col-12">
+                        <label class="form-label">قوانین و مقررات <span class="text-muted fw-normal">(اختیاری)</span></label>
+                        <InputTextArea class="form-control" rows="5" @bind-Value="model.TermsText" maxlength="10000" />
+                        <div class="form-text">اگر خالی بماند، متن کامل و استاندارد قوانین فروشگاه (حریم خصوصی، پرداخت، انصراف و بازگشت وجه، ارسال، تیکت) به‌صورت خودکار در صفحه <a href="/terms" target="_blank">قوانین و مقررات</a> نمایش داده می‌شود. متن واردشده در اینجا جایگزین آن خواهد شد.</div>
+                    </div>
                     <div class="col-12"><label class="form-label">متن فوتر</label><InputText class="form-control" @bind-Value="model.FooterText" maxlength="1000" /></div>
                 </div>
             </div>
@@ -53,7 +57,7 @@
                 <h2 class="h6 mb-3">لوگو و تصویر</h2>
                 <label class="form-label">لوگو</label>
                 <ImageUpload @bind-Value="model.LogoPath" Folder="site" />
-                <label class="form-label mt-3">تصویر بخش معرفی</label>
+                <label class="form-label mt-3">تصویر بخش معرفی <span class="text-muted fw-normal small">(وقتی اسلایدی تعریف نشده باشد)</span></label>
                 <ImageUpload @bind-Value="model.HeroImagePath" Folder="site" />
             </div>
             <div class="az-card p-4 mb-3">
@@ -87,8 +91,15 @@
                 <div class="form-text">تا شماره کارت وارد نشود، گزینه کارت به کارت به مشتری نمایش داده نمی‌شود. رسیدها در منوی «رسیدهای کارت به کارت» بررسی می‌شوند.</div>
             </div>
             <div class="az-card p-4 mb-3">
-                <h2 class="h6 mb-3">تنظیمات عمومی</h2>
-                <div class="form-check form-switch"><InputCheckbox class="form-check-input" id="si" @bind-Value="model.ShowInstructorsOnHome" /><label class="form-check-label" for="si">نمایش مدرسین در صفحه اصلی</label></div>
+                <h2 class="h6 mb-3">بخش‌های سایت</h2>
+                <div class="form-check form-switch mb-2"><InputCheckbox class="form-check-input" id="ce" @bind-Value="model.CoursesEnabled" /><label class="form-check-label" for="ce">بخش دوره‌ها فعال باشد</label></div>
+                <div class="form-check form-switch mb-2"><InputCheckbox class="form-check-input" id="se" @bind-Value="model.ShopEnabled" /><label class="form-check-label" for="se">بخش فروشگاه (محصولات) فعال باشد</label></div>
+                <div class="form-text mb-3">بخش غیرفعال از منوها، صفحه اصلی و فوتر حذف می‌شود و صفحات آن در دسترس نخواهد بود. سفارش‌های قبلی همچنان قابل پیگیری هستند.</div>
+                @if (!model.CoursesEnabled && !model.ShopEnabled) { <div class="alert alert-warning small py-2">هر دو بخش غیرفعال هستند؛ مشتریان امکان خرید نخواهند داشت.</div> }
+                <div class="form-check form-switch mb-3"><InputCheckbox class="form-check-input" id="si" @bind-Value="model.ShowInstructorsOnHome" /><label class="form-check-label" for="si">نمایش مدرسین در صفحه اصلی</label></div>
+                <label class="form-label">فاصله جابه‌جایی اسلایدر (ثانیه)</label>
+                <InputNumber class="form-control" @bind-Value="model.SliderIntervalSeconds" min="3" max="30" />
+                <div class="form-text">اسلایدها در <a href="/admin/slides">اسلایدر صفحه اصلی</a> مدیریت می‌شوند.</div>
             </div>
             <button type="submit" class="btn btn-primary w-100" disabled="@Busy"><i class="bi bi-check2 ms-1"></i> ذخیره تنظیمات</button>
         </div>
