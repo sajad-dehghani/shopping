@@ -17,6 +17,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 
+// Any exception that stops the app during startup is written to logs/startup-error.txt (see StartupLog).
+AppDomain.CurrentDomain.UnhandledException += (_, e) => StartupLog.Write("unhandled", e.ExceptionObject);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Persian culture for formatting; numbers are rendered with Persian digits by the Persian helper.
@@ -111,7 +114,15 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var seeder = scope.ServiceProvider.GetRequiredService<DbSeeder>();
-    await seeder.SeedAsync();
+    try
+    {
+        await seeder.SeedAsync();
+    }
+    catch (Exception ex)
+    {
+        StartupLog.Write("database migration / seed", ex);
+        throw;
+    }
 
     // Admin recovery command: dotnet Azma.Web.dll admin <email> <password>
     // Creates the admin, or resets the password / unlocks an existing one, then exits.
@@ -157,7 +168,15 @@ app.Use(async (ctx, next) =>
 });
 
 var uploads = app.Services.GetRequiredService<IOptions<FileStorageOptions>>().Value.UploadsPath;
-Directory.CreateDirectory(uploads);
+try
+{
+    Directory.CreateDirectory(uploads);
+}
+catch (Exception ex)
+{
+    StartupLog.Write("creating the uploads folder", ex);
+    throw;
+}
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploads),
