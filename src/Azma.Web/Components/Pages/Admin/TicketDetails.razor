@@ -1,0 +1,101 @@
+@page "/admin/tickets/{Id:int}"
+@rendermode InteractiveServer
+@inject TicketService TicketsSvc
+@inject ISiteClock Clock
+
+<PageTitle>تیکت @ticket?.TicketNumber</PageTitle>
+<AdminToast Message="@ToastMessage" IsError="ToastIsError" OnClose="ClearToast" />
+
+@if (ticket is null)
+{
+    <p class="text-muted">@(loaded ? "تیکت یافت نشد." : "در حال بارگذاری...")</p>
+    return;
+}
+
+<div class="admin-page-title">
+    <h1>تیکت <span class="ltr">@ticket.TicketNumber</span> <span class="badge @DisplayNames.BadgeClass(ticket.Status)">@DisplayNames.Of(ticket.Status)</span></h1>
+    <div class="d-flex gap-2">
+        @if (ticket.Status == TicketStatus.Closed)
+        {
+            <button class="btn btn-sm btn-light" @onclick="() => SetStatusAsync(TicketStatus.Open)">بازکردن مجدد</button>
+        }
+        else
+        {
+            <button class="btn btn-sm btn-light" @onclick="() => SetStatusAsync(TicketStatus.Closed)"><i class="bi bi-lock"></i> بستن تیکت</button>
+        }
+        <a href="/admin/tickets" class="btn btn-sm btn-light">بازگشت</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="az-card p-3 mb-3">
+            <h2 class="h6 mb-3">@ticket.Subject</h2>
+            <div class="ticket-thread">
+                @foreach (var m in ticket.Messages)
+                {
+                    <div class="ticket-msg @(m.IsFromStaff ? "staff" : "customer")">
+                        <div class="meta">@(m.IsFromStaff ? $"پشتیبانی ({m.AuthorName})" : m.AuthorName) · @Persian.ToJalali(Clock.ToLocal(m.CreatedAt), true)</div>
+                        <div class="pre-line">@m.Body</div>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="az-card p-3">
+            <h2 class="h6">پاسخ به مشتری</h2>
+            <textarea class="form-control mb-2" rows="5" @bind="reply" maxlength="4000" placeholder="پاسخ خود را بنویسید..."></textarea>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-primary" disabled="@Busy" @onclick="() => ReplyAsync(false)"><i class="bi bi-send"></i> ارسال پاسخ</button>
+                <button class="btn btn-sm btn-outline-secondary" disabled="@Busy" @onclick="() => ReplyAsync(true)">ارسال و بستن تیکت</button>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="az-card p-3">
+            <h2 class="h6">اطلاعات مشتری</h2>
+            <ul class="info-list">
+                <li><span class="k">نام</span><span class="v">@ticket.FullName</span></li>
+                <li><span class="k">موبایل</span><span class="v ltr"><a href="tel:@ticket.Mobile">@ticket.Mobile</a></span></li>
+                @if (ticket.Order is { } o)
+                {
+                    <li><span class="k">سفارش</span><span class="v ltr"><a href="/admin/orders/@o.Id">@o.OrderNumber</a></span></li>
+                    <li><span class="k">وضعیت سفارش</span><span class="v"><OrderStatusBadge Status="o.Status" /></span></li>
+                    <li><span class="k">کد رهگیری</span><span class="v ltr">@(o.TrackingCode ?? "—")</span></li>
+                }
+                <li><span class="k">ثبت</span><span class="v">@Persian.ToJalali(Clock.ToLocal(ticket.CreatedAt), true)</span></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private Ticket? ticket;
+    private bool loaded;
+    private string? reply;
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        ticket = await TicketsSvc.GetAsync(Id);
+        loaded = true;
+    }
+
+    private async Task ReplyAsync(bool close)
+    {
+        Busy = true;
+        try
+        {
+            var r = await TicketsSvc.StaffReplyAsync(Id, reply, await GetActorAsync(), close);
+            if (r.Succeeded) { ShowOk("پاسخ ثبت شد."); reply = null; await LoadAsync(); } else ShowError(r.Error);
+        }
+        finally { Busy = false; }
+    }
+
+    private async Task SetStatusAsync(TicketStatus s)
+    {
+        var r = await TicketsSvc.SetStatusAsync(Id, s, await GetActorAsync());
+        if (r.Succeeded) { ShowOk("وضعیت تیکت تغییر کرد."); await LoadAsync(); } else ShowError(r.Error);
+    }
+}

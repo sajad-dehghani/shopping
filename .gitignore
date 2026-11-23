@@ -12,6 +12,7 @@ publish/
 
 ## Runtime data / secrets
 src/Azma.Web/uploads/
+src/Azma.Web/private-uploads/
 appsettings.*.local.json
 *.local.json
 .env

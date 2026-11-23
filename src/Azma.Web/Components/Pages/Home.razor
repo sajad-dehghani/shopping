@@ -5,94 +5,175 @@
 <HeadContent><meta name="description" content="@data?.Settings.HeroText" /></HeadContent>
 
 @if (data is null) { return; }
-@{ var s = data.Settings; }
+@{
+    var s = data.Settings;
+    var cardEnabled = s.CardToCardEnabled && !string.IsNullOrWhiteSpace(s.CardNumber);
+    var methods = (s.PaymentEnabled ? 1 : 0) + (cardEnabled ? 1 : 0);
+}
 
+<!-- ===== Hero ===== -->
 <section class="hero">
     <div class="container">
         <div class="row align-items-center g-4 g-lg-5">
-            <div class="col-lg-6">
-                <span class="eyebrow">@s.SiteName</span>
-                <h1>@(s.HeroTitle ?? s.SiteName)</h1>
+            <div class="col-lg-6 hero-anim">
+                <span class="eyebrow"><span class="dot"></span> @s.SiteName · خرید بدون نیاز به ثبت‌نام</span>
+                <h1>@(s.HeroTitle ?? "دوره‌ها و محصولات آموزشی") <span class="text-gradient">در چند کلیک</span></h1>
                 @if (!string.IsNullOrEmpty(s.HeroText)) { <p class="lead mt-3">@s.HeroText</p> }
-                <div class="d-flex flex-wrap gap-2 mt-4">
-                    <a href="/courses" class="btn btn-primary btn-lg">مشاهده دوره‌ها</a>
-                    <a href="#contact" class="btn btn-light btn-lg">مشاوره و تماس</a>
+                <div class="hero-cta">
+                    <a href="/courses" class="btn btn-gradient btn-lg"><i class="bi bi-journal-bookmark"></i> مشاهده دوره‌ها</a>
+                    <a href="/products" class="btn btn-light btn-lg"><i class="bi bi-bag"></i> فروشگاه محصولات</a>
                 </div>
-                <div class="hero-stats">
-                    <div><strong>@Persian.Digits(data.Courses.Count)+</strong><span>دوره فعال</span></div>
-                    @if (data.Instructors.Count > 0) { <div><strong>@Persian.Digits(data.Instructors.Count)</strong><span>مدرس متخصص</span></div> }
-                    <div><strong>آنلاین</strong><span>ثبت‌نام و پرداخت</span></div>
+                <div class="hero-trust">
+                    <span><i class="bi bi-patch-check-fill"></i> بدون نیاز به ساخت حساب کاربری</span>
+                    <span><i class="bi bi-patch-check-fill"></i> کد رهگیری برای هر سفارش</span>
+                    <span><i class="bi bi-patch-check-fill"></i> پشتیبانی تیکتی</span>
                 </div>
             </div>
-            @if (!string.IsNullOrEmpty(s.HeroImagePath))
-            {
-                <div class="col-lg-6 d-none d-md-block">
-                    <div class="hero-figure"><img src="@s.HeroImagePath" alt="" width="1200" height="900" fetchpriority="high" /></div>
+            <div class="col-lg-6 hero-anim" style="--d:.15s">
+                <div class="hero-visual" aria-hidden="true">
+                    <div class="hero-blob"></div>
+                    <div class="hero-photo">
+                        @if (!string.IsNullOrEmpty(s.HeroImagePath)) { <img src="@s.HeroImagePath" alt="" width="600" height="600" fetchpriority="high" /> }
+                        else { <div class="thumb-fallback"><i class="bi bi-bag-heart"></i></div> }
+                    </div>
+                    <div class="float-card fc-1"><span class="fc-icon fc-green"><i class="bi bi-check2-circle"></i></span><span>پرداخت موفق<small>کد رهگیری صادر شد</small></span></div>
+                    <div class="float-card fc-2"><span class="fc-icon fc-amber"><i class="bi bi-credit-card-2-front"></i></span><span>کارت به کارت<small>رسید تأیید شد</small></span></div>
+                    <div class="float-card fc-3"><span class="fc-icon fc-indigo"><i class="bi bi-headset"></i></span><span>پاسخ تیکت<small>تیم پشتیبانی آزما</small></span></div>
                 </div>
-            }
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Stats ===== -->
+<section class="stats-strip">
+    <div class="container">
+        <div class="stats-card reveal">
+            <div class="stat-item"><i class="bi bi-journal-bookmark"></i><span class="num" data-count="@data.Courses.Count">@Persian.Digits(data.Courses.Count)</span><span class="lbl">دوره فعال</span></div>
+            <div class="stat-item"><i class="bi bi-box-seam"></i><span class="num" data-count="@data.Products.Count">@Persian.Digits(data.Products.Count)</span><span class="lbl">محصول آموزشی</span></div>
+            <div class="stat-item"><i class="bi bi-person-video3"></i><span class="num" data-count="@data.Instructors.Count">@Persian.Digits(data.Instructors.Count)</span><span class="lbl">مدرس متخصص</span></div>
+            <div class="stat-item"><i class="bi bi-wallet2"></i><span class="num" data-count="@methods">@Persian.Digits(methods)</span><span class="lbl">روش پرداخت امن</span></div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Infographic: how buying works ===== -->
+<section class="section" id="how">
+    <div class="container">
+        <div class="section-head text-center reveal">
+            <span class="eyebrow"><i class="bi bi-lightning-charge"></i> مسیر خرید در آزما</span>
+            <h2 class="section-title">از انتخاب تا دریافت کد رهگیری، در ۴ قدم</h2>
+            <p class="section-subtitle">بدون ساخت حساب کاربری؛ فقط نام و شماره موبایل کافی است.</p>
+        </div>
+        <div class="journey reveal">
+            <div class="journey-line"><span></span></div>
+            <div class="journey-step">
+                <div class="journey-icon"><i class="bi bi-hand-index-thumb"></i></div>
+                <div><h3>انتخاب دوره یا محصول</h3><p>دوره یا محصول دلخواه را از فروشگاه انتخاب کنید.</p></div>
+            </div>
+            <div class="journey-step">
+                <div class="journey-icon"><i class="bi bi-person-vcard"></i></div>
+                <div><h3>ثبت نام و موبایل</h3><p>فقط نام، نام خانوادگی و شماره موبایل؛ بدون لاگین.</p></div>
+            </div>
+            <div class="journey-step">
+                <div class="journey-icon"><i class="bi bi-credit-card-2-back"></i></div>
+                <div><h3>پرداخت</h3><p>@(cardEnabled ? "درگاه بانکی آنلاین یا کارت به کارت و ارسال تصویر رسید." : "پرداخت امن از طریق درگاه بانکی.")</p></div>
+            </div>
+            <div class="journey-step">
+                <div class="journey-icon"><i class="bi bi-upc-scan"></i></div>
+                <div><h3>کد رهگیری و پشتیبانی</h3><p>با کد رهگیری، سفارش را پیگیری و در صورت نیاز تیکت ثبت کنید.</p></div>
+            </div>
         </div>
     </div>
 </section>
 
 @if (data.Courses.Count > 0)
 {
-    <section class="section" id="courses">
+    <section class="section section-white" id="courses">
         <div class="container">
-            <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-4">
+            <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 section-head reveal">
                 <div>
-                    <h2 class="section-title">دوره‌های فعال و ویژه</h2>
-                    <p class="text-muted m-0">ظرفیت محدود؛ همین حالا ثبت‌نام کنید.</p>
+                    <span class="eyebrow"><i class="bi bi-stars"></i> پیشنهاد ویژه</span>
+                    <h2 class="section-title">دوره‌های فعال</h2>
+                    <p class="section-subtitle">ظرفیت محدود؛ همین حالا ثبت‌نام کنید.</p>
                 </div>
                 <a href="/courses" class="btn btn-outline-primary">همه دوره‌ها <i class="bi bi-arrow-left"></i></a>
             </div>
-            <div class="row g-4">
+            <div class="row g-4 scroller">
+                @{ var i = 0; }
                 @foreach (var c in data.Courses)
                 {
-                    <div class="col-sm-6 col-lg-4"><CourseCardView Course="c" /></div>
+                    <div class="col-sm-6 col-lg-4 reveal" style="--d:@((i++ % 3) * 0.08)s"><CourseCardView Course="c" /></div>
                 }
             </div>
         </div>
     </section>
 }
+
+<!-- ===== Infographic: payment options ===== -->
+<section class="section section-tint" id="payment">
+    <div class="container">
+        <div class="section-head text-center reveal">
+            <span class="eyebrow"><i class="bi bi-shield-check"></i> پرداخت امن</span>
+            <h2 class="section-title">روش پرداخت را خودتان انتخاب کنید</h2>
+            <p class="section-subtitle">هر سفارش یک شماره سفارش و پس از تأیید پرداخت، یک کد رهگیری اختصاصی دارد.</p>
+        </div>
+        <div class="pay-info">
+            <div class="pay-card featured reveal">
+                <div class="pc-glow"></div>
+                <div class="pc-head">
+                    <span class="pc-icon"><i class="bi bi-lightning-charge-fill"></i></span>
+                    <div><h3>درگاه پرداخت آنلاین</h3><span class="pc-tag">پیشنهادی · تأیید فوری</span></div>
+                </div>
+                <ul class="mini-steps">
+                    <li><i class="bi bi-1-circle"></i> ثبت اطلاعات و انتقال به درگاه بانکی امن</li>
+                    <li><i class="bi bi-2-circle"></i> پرداخت با همه کارت‌های عضو شتاب</li>
+                    <li><i class="bi bi-3-circle"></i> صدور خودکار کد رهگیری بلافاصله پس از پرداخت</li>
+                </ul>
+                <div class="pc-meter">
+                    <div class="row-lbl"><span>سرعت تأیید سفارش</span><span>آنی</span></div>
+                    <div class="bar"><span style="--w:100%"></span></div>
+                </div>
+            </div>
+            @if (cardEnabled)
+            {
+                <div class="pay-card reveal" style="--d:.12s">
+                    <div class="pc-head">
+                        <span class="pc-icon"><i class="bi bi-credit-card-2-front"></i></span>
+                        <div><h3>کارت به کارت</h3><span class="pc-tag">ارسال تصویر رسید</span></div>
+                    </div>
+                    <ul class="mini-steps">
+                        <li><i class="bi bi-1-circle"></i> واریز مبلغ سفارش به کارت فروشگاه</li>
+                        <li><i class="bi bi-2-circle"></i> بارگذاری تصویر رسید همراه با نام و موبایل</li>
+                        <li><i class="bi bi-3-circle"></i> صدور کد رهگیری پس از تأیید مدیر فروشگاه</li>
+                    </ul>
+                    <div class="pc-meter">
+                        <div class="row-lbl"><span>سرعت تأیید سفارش</span><span>پس از بررسی رسید</span></div>
+                        <div class="bar"><span style="--w:62%"></span></div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>
 
 @if (data.Products.Count > 0)
 {
-    <section class="section section-white">
+    <section class="section">
         <div class="container">
-            <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-4">
+            <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 section-head reveal">
                 <div>
+                    <span class="eyebrow"><i class="bi bi-bag-heart"></i> فروشگاه</span>
                     <h2 class="section-title">محصولات</h2>
-                    <p class="text-muted m-0">کتاب‌ها و محصولات آموزشی قابل خرید آنلاین</p>
+                    <p class="section-subtitle">کتاب‌ها و محصولات آموزشی قابل خرید آنلاین</p>
                 </div>
                 <a href="/products" class="btn btn-outline-primary">همه محصولات <i class="bi bi-arrow-left"></i></a>
             </div>
-            <div class="row g-4">
+            <div class="row g-3 g-md-4 scroller products">
+                @{ var j = 0; }
                 @foreach (var p in data.Products.Take(4))
                 {
-                    <div class="col-6 col-lg-3"><ProductCardView Product="p" /></div>
-                }
-            </div>
-        </div>
-    </section>
-}
-
-@if (data.Instructors.Count > 0)
-{
-    <section class="section">
-        <div class="container">
-            <h2 class="section-title text-center">مدرسین ما</h2>
-            <p class="section-subtitle text-center">متخصصانی که تجربه واقعی خود را با شما به اشتراک می‌گذارند</p>
-            <div class="row g-4 justify-content-center">
-                @foreach (var i in data.Instructors)
-                {
-                    <div class="col-6 col-md-4 col-lg-3">
-                        <div class="az-card instructor">
-                            @if (!string.IsNullOrEmpty(i.PhotoPath)) { <img src="@i.PhotoPath" alt="@i.FullName" loading="lazy" width="96" height="96" /> }
-                            else { <span class="avatar-fallback"><i class="bi bi-person"></i></span> }
-                            <h3>@i.FullName</h3>
-                            @if (!string.IsNullOrEmpty(i.Title)) { <p>@i.Title</p> }
-                        </div>
-                    </div>
+                    <div class="col-6 col-lg-3 reveal" style="--d:@((j++ % 4) * 0.08)s"><ProductCardView Product="p" /></div>
                 }
             </div>
         </div>
@@ -103,12 +184,15 @@
 {
     <section class="section section-white">
         <div class="container">
-            <h2 class="section-title text-center">چرا دوره‌های ما؟</h2>
-            <p class="section-subtitle text-center">آنچه شرکت در دوره‌های ما را متفاوت می‌کند</p>
-            <div class="row g-4">
+            <div class="section-head text-center reveal">
+                <h2 class="section-title">چرا @s.SiteName؟</h2>
+                <p class="section-subtitle">آنچه خرید از ما را متفاوت می‌کند</p>
+            </div>
+            <div class="row g-3 g-md-4">
+                @{ var k = 0; }
                 @foreach (var f in data.Features)
                 {
-                    <div class="col-sm-6 col-lg-3">
+                    <div class="col-sm-6 col-lg-3 reveal" style="--d:@((k++ % 4) * 0.08)s">
                         <div class="feature">
                             <div class="icon"><i class="bi @f.Icon"></i></div>
                             <h3>@f.Title</h3>
@@ -121,13 +205,63 @@
     </section>
 }
 
+@if (data.Instructors.Count > 0)
+{
+    <section class="section">
+        <div class="container">
+            <div class="section-head text-center reveal">
+                <h2 class="section-title">مدرسین ما</h2>
+                <p class="section-subtitle">متخصصانی که تجربه واقعی خود را با شما به اشتراک می‌گذارند</p>
+            </div>
+            <div class="row g-3 g-md-4 justify-content-center">
+                @foreach (var ins in data.Instructors)
+                {
+                    <div class="col-6 col-md-4 col-lg-3 reveal">
+                        <div class="az-card instructor">
+                            @if (!string.IsNullOrEmpty(ins.PhotoPath)) { <img src="@ins.PhotoPath" alt="@ins.FullName" loading="lazy" width="96" height="96" /> }
+                            else { <span class="avatar-fallback"><i class="bi bi-person"></i></span> }
+                            <h3>@ins.FullName</h3>
+                            @if (!string.IsNullOrEmpty(ins.Title)) { <p>@ins.Title</p> }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<!-- ===== Tracking band ===== -->
+<section class="section-sm pb-5">
+    <div class="container">
+        <div class="track-band reveal">
+            <div class="row g-4 align-items-center">
+                <div class="col-lg-5">
+                    <h2 class="mb-2"><i class="bi bi-upc-scan ms-1"></i> سفارش خود را پیگیری کنید</h2>
+                    <p class="m-0">کد رهگیری یا شماره سفارش را همراه با شماره موبایل وارد کنید. سؤالی دارید؟ <a href="/support" class="text-white fw-bold">تیکت ثبت کنید</a>.</p>
+                </div>
+                <div class="col-lg-7">
+                    <form method="post" action="/order/track" class="track-form">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="_handler" value="track" />
+                        <input name="Input.Number" class="form-control ltr" placeholder="کد رهگیری یا شماره سفارش" required maxlength="30" aria-label="کد رهگیری یا شماره سفارش" />
+                        <input name="Input.Mobile" type="tel" class="form-control" placeholder="شماره موبایل" required maxlength="20" inputmode="tel" aria-label="شماره موبایل" />
+                        <button class="btn btn-gradient" type="submit"><i class="bi bi-search"></i> پیگیری</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 @if (data.Faqs.Count > 0)
 {
-    <section class="section" id="faq">
+    <section class="section section-white" id="faq">
         <div class="container" style="max-width:820px">
-            <h2 class="section-title text-center">پرسش‌های متداول</h2>
-            <p class="section-subtitle text-center">پاسخ سوالات رایج درباره ثبت‌نام و پرداخت</p>
-            <div class="faq">
+            <div class="section-head text-center reveal">
+                <h2 class="section-title">پرسش‌های متداول</h2>
+                <p class="section-subtitle">پاسخ سوالات رایج درباره خرید، پرداخت و پیگیری</p>
+            </div>
+            <div class="faq reveal">
                 @foreach (var q in data.Faqs)
                 {
                     <details>
@@ -140,16 +274,17 @@
     </section>
 }
 
-<section class="section section-white" id="contact">
+<section class="section" id="contact">
     <div class="container">
         <div class="row g-4 g-lg-5">
-            <div class="col-lg-5">
+            <div class="col-lg-5 reveal">
+                <span class="eyebrow"><i class="bi bi-chat-dots"></i> در ارتباط باشیم</span>
                 <h2 class="section-title">تماس با ما</h2>
-                <p class="text-muted mb-4">برای مشاوره و اطلاعات بیشتر با ما در تماس باشید.</p>
+                <p class="text-muted mb-4">برای مشاوره و اطلاعات بیشتر با ما در تماس باشید. برای پیگیری سفارش، از <a href="/support">بخش پشتیبانی</a> تیکت ثبت کنید.</p>
                 <ContactInfo Settings="s" />
             </div>
-            <div class="col-lg-7">
-                <div class="az-card p-4">
+            <div class="col-lg-7 reveal" style="--d:.1s">
+                <div class="az-card az-card-lg p-4">
                     <h3 class="h5 mb-3">ارسال پیام</h3>
                     <ContactForm />
                 </div>

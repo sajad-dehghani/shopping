@@ -35,5 +35,12 @@ public class SiteSettings
     public int SeatReservationMinutes { get; set; } = 30;
     public bool ShowInstructorsOnHome { get; set; } = true;
 
+    // Card-to-card (bank transfer) payment
+    public bool CardToCardEnabled { get; set; } = true;
+    public string? CardNumber { get; set; }
+    public string? CardHolderName { get; set; }
+    public string? BankName { get; set; }
+    public string? ShebaNumber { get; set; }
+
     public DateTime? UpdatedAt { get; set; }
 }

@@ -16,6 +16,20 @@
 }
 else
 {
+    @if (pendingReceipts > 0)
+    {
+        <div class="alert alert-primary d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-receipt-cutoff ms-1"></i> @Persian.Digits(pendingReceipts) رسید کارت به کارت منتظر تأیید است.</span>
+            <a href="/admin/receipts" class="btn btn-sm btn-primary">بررسی رسیدها</a>
+        </div>
+    }
+    @if (openTickets > 0)
+    {
+        <div class="alert alert-warning d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-life-preserver ms-1"></i> @Persian.Digits(openTickets) تیکت پشتیبانی در انتظار پاسخ است.</span>
+            <a href="/admin/tickets?status=0" class="btn btn-sm btn-warning">پاسخ به تیکت‌ها</a>
+        </div>
+    }
     @if (stats.UnknownPayments > 0)
     {
         <div class="alert alert-info d-flex justify-content-between align-items-center">
@@ -89,7 +103,15 @@ else
 }
 
 @code {
+    [Inject] private ReceiptService Receipts { get; set; } = default!;
+    [Inject] private TicketService TicketsSvc { get; set; } = default!;
     private DashboardStats? stats;
+    private int pendingReceipts, openTickets;
     protected override Task OnInitializedAsync() => LoadAsync();
-    private async Task LoadAsync() => stats = await DashboardSvc.GetAsync();
+    private async Task LoadAsync()
+    {
+        stats = await DashboardSvc.GetAsync();
+        pendingReceipts = await Receipts.CountPendingAsync();
+        openTickets = await TicketsSvc.CountOpenAsync();
+    }
 }

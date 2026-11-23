@@ -32,6 +32,8 @@ Azma.Web  ──►  Azma.Infrastructure  ──►  Azma.Application  ──►
 | `OrderStatusHistories` | تاریخچه کامل تغییرات وضعیت سفارش (چه کسی، چه زمانی، به چه دلیل) |
 | `Enrollments` | ثبت‌نام‌ها؛ مرتبط با دوره، سفارش و قلم سفارش؛ مقادیر فیلدهای اختصاصی به صورت JSON |
 | `PaymentTransactions` | تمام تلاش‌های پرداخت: Authority (یکتا)، مبلغ تومان و ریال، RefID، کارت، کد و پیام درگاه |
+| `PaymentReceipts` | رسیدهای کارت به کارت: نام و موبایل واریزکننده، مبلغ، تصویر (ذخیره خصوصی خارج از `uploads`)، وضعیت بررسی و دلیل رد |
+| `Tickets` / `TicketMessages` | تیکت‌های پشتیبانی مهمان، مرتبط با سفارش از طریق کد رهگیری یا شماره سفارش + موبایل |
 | `SiteSettings` | تنظیمات سایت (یک ردیف با محدودیت `Id = 1`) |
 | `FaqItems` / `FeatureItems` | پرسش‌های متداول و مزیت‌ها |
 | `ContactMessages` | پیام‌های فرم تماس |
@@ -52,6 +54,8 @@ Azma.Web  ──►  Azma.Infrastructure  ──►  Azma.Application  ──►
          failed  ▼  │                     
             PaymentFailed                 
    خطای شبکه ──► PaymentUnknown ──استعلام مجدد──► Paid / PaymentFailed
+   کارت به کارت: ارسال رسید ──► AwaitingApproval ──تأیید مدیر──► Paid (صدور کد رهگیری ۱۰ رقمی)
+                                          └──رد (با دلیل)──► PendingPayment
    مدیر (با دلیل) ──► Cancelled
 
 تراکنش:    Pending ──► Verifying (قفل) ──► Succeeded | Failed | Cancelled | Unknown

@@ -10,6 +10,9 @@ public sealed class FileStorageOptions
     /// <summary>Absolute (or content-root relative) folder for uploads. Served at /uploads.</summary>
     public string UploadsPath { get; set; } = "uploads";
     public int MaxImageSizeKb { get; set; } = 3072;
+    /// <summary>Folder for private files (payment receipts). Must NOT be inside UploadsPath or wwwroot.</summary>
+    public string PrivatePath { get; set; } = "private-uploads";
+    public int MaxReceiptSizeKb { get; set; } = 6144;
 }
 
 /// <summary>
@@ -28,6 +31,52 @@ public sealed class LocalFileStorage(IOptions<FileStorageOptions> options, ILogg
     };
 
     public string RootPath => options.Value.UploadsPath;
+
+    private static readonly HashSet<string> PrivateFolders = ["receipts"];
+
+    public async Task<string> SavePrivateImageAsync(Stream content, string originalFileName, string folder, CancellationToken cancellationToken = default)
+    {
+        if (!PrivateFolders.Contains(folder)) throw new FileValidationException("پوشه مقصد نامعتبر است.");
+        var (bytes, ext) = await ReadValidatedImageAsync(content, originalFileName, options.Value.MaxReceiptSizeKb * 1024L, cancellationToken);
+        var dir = Path.Combine(options.Value.PrivatePath, folder);
+        Directory.CreateDirectory(dir);
+        var name = $"{Guid.NewGuid():N}{ext}";
+        await File.WriteAllBytesAsync(Path.Combine(dir, name), bytes, cancellationToken);
+        logger.LogInformation("Stored private file {Folder}/{Name} ({Size} bytes)", folder, name, bytes.Length);
+        return $"private/{folder}/{name}";
+    }
+
+    public (Stream Content, string ContentType)? OpenPrivate(string? privatePath)
+    {
+        if (string.IsNullOrWhiteSpace(privatePath) || !privatePath.StartsWith("private/", StringComparison.Ordinal)) return null;
+        var root = Path.GetFullPath(options.Value.PrivatePath);
+        var full = Path.GetFullPath(Path.Combine(root, privatePath["private/".Length..]));
+        if (!full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal) || !File.Exists(full)) return null;
+        var type = Path.GetExtension(full).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            _ => "image/jpeg",
+        };
+        return (File.OpenRead(full), type);
+    }
+
+    private static async Task<(byte[] Bytes, string Ext)> ReadValidatedImageAsync(Stream content, string originalFileName, long max, CancellationToken cancellationToken)
+    {
+        var ext = Path.GetExtension(originalFileName).ToLowerInvariant();
+        if (!Signatures.ContainsKey(ext)) throw new FileValidationException("فقط تصاویر JPG، PNG و WebP مجاز هستند.");
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        int read;
+        while ((read = await content.ReadAsync(chunk, cancellationToken)) > 0)
+        {
+            if (buffer.Length + read > max) throw new FileValidationException($"حجم تصویر نباید بیشتر از {max / 1024 / 1024} مگابایت باشد.");
+            buffer.Write(chunk, 0, read);
+        }
+        var bytes = buffer.ToArray();
+        if (!HasValidSignature(bytes, ext)) throw new FileValidationException("محتوای فایل با نوع تصویر مطابقت ندارد.");
+        return (bytes, ext == ".jpeg" ? ".jpg" : ext);
+    }
 
     public async Task<string> SaveImageAsync(Stream content, string originalFileName, string folder, CancellationToken cancellationToken = default)
     {

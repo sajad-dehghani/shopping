@@ -63,7 +63,7 @@
 
                 @if (purchasable)
                 {
-                    <div class="az-card p-4 mb-4" id="buy">
+                    <div class="az-card az-card-lg p-4 mb-4" id="buy">
                         <h2 class="h5 mb-3">خرید آنلاین</h2>
                         <EditForm Model="Input" method="post" OnValidSubmit="SubmitAsync" FormName="product-buy">
                             <DataAnnotationsValidator />
@@ -102,8 +102,9 @@
                                     <InputTextArea id="notes" class="form-control" rows="2" @bind-Value="Input.Notes" />
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-success btn-lg w-100 mt-4"><i class="bi bi-bag-check ms-1"></i> خرید و پرداخت</button>
-                            <p class="small text-muted text-center mt-2 mb-0"><i class="bi bi-shield-check"></i> مبلغ نهایی بر اساس تعداد، روی سرور محاسبه و در درگاه زرین‌پال پرداخت می‌شود.</p>
+                            <PaymentMethodPicker Value="@Input.PaymentMethod" Amount="final" />
+                            <button type="submit" class="btn btn-gradient btn-lg w-100 mt-4"><i class="bi bi-bag-check"></i> ثبت سفارش و پرداخت</button>
+                            <p class="small text-muted text-center mt-2 mb-0"><i class="bi bi-shield-check"></i> بدون نیاز به ثبت‌نام در سایت. مبلغ نهایی بر اساس تعداد روی سرور محاسبه می‌شود.</p>
                         </EditForm>
                     </div>
                 }
@@ -140,6 +141,7 @@
         if (!created.Succeeded) { error = created.Error; return; }
         var order = created.Value!;
         if (order.IsFree) { Nav.NavigateTo($"/order/{order.OrderPublicId}"); return; }
+        if (Input.WantsCardToCard) { Nav.NavigateTo($"/order/{order.OrderPublicId}?pay=card#card-payment"); return; }
         var payment = await Payments.StartPaymentAsync(order.OrderPublicId, Urls.PaymentCallback);
         if (payment.Succeeded) { Nav.NavigateTo(payment.Value!); return; }
         Flash.Set(payment.Error!);

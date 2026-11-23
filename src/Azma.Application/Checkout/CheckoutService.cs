@@ -142,6 +142,7 @@ public sealed class CheckoutService(
             .Include(o => o.Items).ThenInclude(i => i.Course)
             .Include(o => o.Items).ThenInclude(i => i.Product)
             .Include(o => o.Transactions.OrderByDescending(t => t.Id))
+            .Include(o => o.Receipts.OrderByDescending(r => r.Id))
             .AsSplitQuery()
             .FirstOrDefaultAsync(o => o.PublicId == publicId, ct);
     }

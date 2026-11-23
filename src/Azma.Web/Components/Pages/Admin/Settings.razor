@@ -74,6 +74,19 @@
                 <InputNumber class="form-control" @bind-Value="model.SeatReservationMinutes" min="5" max="1440" />
             </div>
             <div class="az-card p-4 mb-3">
+                <h2 class="h6 mb-3">پرداخت کارت به کارت</h2>
+                <div class="form-check form-switch mb-3"><InputCheckbox class="form-check-input" id="c2c" @bind-Value="model.CardToCardEnabled" /><label class="form-check-label" for="c2c">امکان پرداخت کارت به کارت و ارسال رسید</label></div>
+                <label class="form-label">شماره کارت مقصد</label>
+                <InputText class="form-control ltr" @bind-Value="model.CardNumber" maxlength="30" placeholder="6037-0000-0000-0000" />
+                <label class="form-label mt-2">نام صاحب حساب</label>
+                <InputText class="form-control" @bind-Value="model.CardHolderName" maxlength="100" />
+                <label class="form-label mt-2">نام بانک</label>
+                <InputText class="form-control" @bind-Value="model.BankName" maxlength="100" />
+                <label class="form-label mt-2">شماره شبا <span class="text-muted fw-normal">(اختیاری)</span></label>
+                <InputText class="form-control ltr" @bind-Value="model.ShebaNumber" maxlength="40" placeholder="IR000000000000000000000000" />
+                <div class="form-text">تا شماره کارت وارد نشود، گزینه کارت به کارت به مشتری نمایش داده نمی‌شود. رسیدها در منوی «رسیدهای کارت به کارت» بررسی می‌شوند.</div>
+            </div>
+            <div class="az-card p-4 mb-3">
                 <h2 class="h6 mb-3">تنظیمات عمومی</h2>
                 <div class="form-check form-switch"><InputCheckbox class="form-check-input" id="si" @bind-Value="model.ShowInstructorsOnHome" /><label class="form-check-label" for="si">نمایش مدرسین در صفحه اصلی</label></div>
             </div>

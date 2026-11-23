@@ -19,6 +19,12 @@ public class CustomerInput
 
     [StringLength(1000, ErrorMessage = "توضیحات حداکثر ۱۰۰۰ حرف می‌تواند باشد.")]
     public string? Notes { get; set; }
+
+    /// <summary>"online" (gateway) or "card" (card-to-card with receipt upload). Only affects where the user goes next.</summary>
+    [StringLength(10)]
+    public string? PaymentMethod { get; set; } = "online";
+
+    public bool WantsCardToCard => string.Equals(PaymentMethod, "card", StringComparison.OrdinalIgnoreCase);
 }
 
 public sealed class CourseCheckoutInput : CustomerInput

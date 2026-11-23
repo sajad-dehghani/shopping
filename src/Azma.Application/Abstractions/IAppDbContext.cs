@@ -23,6 +23,9 @@ public interface IAppDbContext : IAsyncDisposable, IDisposable
     DbSet<OrderStatusHistory> OrderStatusHistories { get; }
     DbSet<Enrollment> Enrollments { get; }
     DbSet<PaymentTransaction> PaymentTransactions { get; }
+    DbSet<PaymentReceipt> PaymentReceipts { get; }
+    DbSet<Azma.Domain.Support.Ticket> Tickets { get; }
+    DbSet<Azma.Domain.Support.TicketMessage> TicketMessages { get; }
     DbSet<SiteSettings> SiteSettings { get; }
     DbSet<FaqItem> FaqItems { get; }
     DbSet<FeatureItem> FeatureItems { get; }

@@ -31,6 +31,10 @@ public sealed class SiteSettingsConfiguration : IEntityTypeConfiguration<SiteSet
         b.Property(x => x.Aparat).HasMaxLength(300);
         b.Property(x => x.EnamadHtmlCode).HasMaxLength(2000);
         b.Property(x => x.PaymentDescription).HasMaxLength(200).IsRequired();
+        b.Property(x => x.CardNumber).HasMaxLength(30).IsUnicode(false);
+        b.Property(x => x.CardHolderName).HasMaxLength(100);
+        b.Property(x => x.BankName).HasMaxLength(100);
+        b.Property(x => x.ShebaNumber).HasMaxLength(40).IsUnicode(false);
         b.ToTable(t => t.HasCheckConstraint("CK_SiteSettings_Singleton", "[Id] = 1"));
     }
 }

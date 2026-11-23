@@ -11,6 +11,8 @@ public enum OrderStatus
     Cancelled = 3,
     /// <summary>Gateway result could not be determined; needs re-check.</summary>
     PaymentUnknown = 4,
+    /// <summary>A card-to-card receipt was uploaded and is waiting for admin approval.</summary>
+    AwaitingApproval = 5,
 }
 
 public enum OrderItemType
@@ -43,8 +45,11 @@ public class Order : AuditableEntity
     public List<Enrollment> Enrollments { get; set; } = [];
     public List<PaymentTransaction> Transactions { get; set; } = [];
     public List<OrderStatusHistory> StatusHistory { get; set; } = [];
+    public List<PaymentReceipt> Receipts { get; set; } = [];
 
     public bool CanRetryPayment => Status is OrderStatus.PendingPayment or OrderStatus.PaymentFailed;
+    /// <summary>Card-to-card receipts can be sent in the same states an online payment can be (re)started.</summary>
+    public bool CanSubmitReceipt => CanRetryPayment;
 
     public void ChangeStatus(OrderStatus newStatus, DateTime utcNow, string reason, string? changedBy = null)
     {

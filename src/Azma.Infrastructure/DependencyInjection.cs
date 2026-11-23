@@ -32,7 +32,11 @@ public static class DependencyInjection
 
         services.AddOptions<FileStorageOptions>()
             .Bind(configuration.GetSection(FileStorageOptions.SectionName))
-            .PostConfigure(o => o.UploadsPath = Path.GetFullPath(Path.IsPathRooted(o.UploadsPath) ? o.UploadsPath : Path.Combine(contentRootPath, o.UploadsPath)));
+            .PostConfigure(o =>
+            {
+                o.UploadsPath = Path.GetFullPath(Path.IsPathRooted(o.UploadsPath) ? o.UploadsPath : Path.Combine(contentRootPath, o.UploadsPath));
+                o.PrivatePath = Path.GetFullPath(Path.IsPathRooted(o.PrivatePath) ? o.PrivatePath : Path.Combine(contentRootPath, o.PrivatePath));
+            });
         services.AddSingleton<LocalFileStorage>();
         services.AddSingleton<IFileStorage>(sp => sp.GetRequiredService<LocalFileStorage>());
 

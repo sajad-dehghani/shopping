@@ -1,0 +1,85 @@
+@page "/support/ticket/{PublicId:guid}"
+@inject TicketService TicketsSvc
+@inject ISiteClock Clock
+@inject NavigationManager Nav
+
+<PageTitle>تیکت @ticket?.TicketNumber</PageTitle>
+<HeadContent><meta name="robots" content="noindex" /></HeadContent>
+
+@if (ticket is null) { return; }
+
+<section class="section-sm">
+    <div class="container" style="max-width:820px">
+        @if (IsNew == 1)
+        {
+            <div class="alert alert-success d-flex gap-2 align-items-center flex-wrap">
+                <i class="bi bi-check-circle"></i>
+                <span>تیکت شما ثبت شد. شماره تیکت را برای پیگیری نگه دارید:</span>
+                <span class="tracking-box py-1"><strong class="ltr">@ticket.TicketNumber</strong><button type="button" class="copy-btn" style="width:32px;height:32px" data-copy="@ticket.TicketNumber" aria-label="کپی شماره تیکت"><i class="bi bi-copy"></i></button></span>
+            </div>
+        }
+
+        <div class="az-card az-card-lg p-4 p-md-5">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+                <div>
+                    <div class="small text-muted">تیکت <span class="ltr">@ticket.TicketNumber</span>@if (ticket.Order is { } o) { <span> · سفارش <span class="ltr">@Persian.Digits(o.OrderNumber)</span></span> }</div>
+                    <h1 class="h4 m-0 mt-1">@ticket.Subject</h1>
+                </div>
+                <span class="badge @DisplayNames.BadgeClass(ticket.Status) fs-6">@DisplayNames.Of(ticket.Status)</span>
+            </div>
+
+            <div class="ticket-thread">
+                @foreach (var m in ticket.Messages)
+                {
+                    <div class="ticket-msg @(m.IsFromStaff ? "staff" : "customer")">
+                        <div class="meta">@(m.IsFromStaff ? "پشتیبانی آزما" : m.AuthorName) · @Persian.ToJalali(Clock.ToLocal(m.CreatedAt), true)</div>
+                        <div class="pre-line">@m.Body</div>
+                    </div>
+                }
+            </div>
+
+            @if (ticket.Status == TicketStatus.Closed)
+            {
+                <div class="alert alert-info mt-4 mb-0">این تیکت بسته شده است. برای موضوع جدید، <a href="/support?code=@Uri.EscapeDataString(ticket.Order?.TrackingCode ?? ticket.Order?.OrderNumber ?? "")">تیکت جدید</a> ثبت کنید.</div>
+            }
+            else
+            {
+                <hr class="my-4" />
+                <EditForm Model="Reply" method="post" OnValidSubmit="ReplyAsync" FormName="ticket-reply" data-once>
+                    <DataAnnotationsValidator />
+                    @if (error is not null) { <div class="alert alert-danger">@error</div> }
+                    <label class="form-label" for="reply">ارسال پیام جدید</label>
+                    <InputTextArea id="reply" class="form-control" rows="4" @bind-Value="Reply.Message" maxlength="4000" />
+                    <ValidationMessage For="() => Reply.Message" />
+                    <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-send"></i> ارسال پیام</button>
+                </EditForm>
+            }
+        </div>
+        <div class="d-flex justify-content-between flex-wrap gap-2 mt-3">
+            <a href="/support" class="btn btn-light"><i class="bi bi-arrow-right"></i> بازگشت به پشتیبانی</a>
+            @if (ticket.Order is not null) { <a href="/order/@ticket.Order.PublicId" class="btn btn-light"><i class="bi bi-receipt"></i> مشاهده سفارش</a> }
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter] public Guid PublicId { get; set; }
+    [SupplyParameterFromQuery(Name = "new")] private int? IsNew { get; set; }
+    [SupplyParameterFromForm(FormName = "ticket-reply")] private TicketReplyInput Reply { get; set; } = default!;
+    private Ticket? ticket;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Reply ??= new();
+        ticket = await TicketsSvc.GetPublicAsync(PublicId);
+        if (ticket is null) Nav.NotFound();
+    }
+
+    private async Task ReplyAsync()
+    {
+        var r = await TicketsSvc.CustomerReplyAsync(PublicId, Reply);
+        if (!r.Succeeded) { error = r.Error; return; }
+        Nav.NavigateTo($"/support/ticket/{PublicId}");
+    }
+}

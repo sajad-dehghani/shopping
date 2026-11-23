@@ -163,6 +163,7 @@ app.MapRazorComponents<App>()
 app.MapAdditionalIdentityEndpoints();
 app.MapPaymentEndpoints();
 app.MapAdminExportEndpoints();
+app.MapAdminReceiptEndpoints();
 app.MapHealthChecks("/health");
 
 await app.RunAsync();

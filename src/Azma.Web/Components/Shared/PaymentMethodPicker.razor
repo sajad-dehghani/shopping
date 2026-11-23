@@ -1,0 +1,42 @@
+@inject SiteSettingsService SettingsService
+
+@if (settings is not null && Amount > 0 && (OnlineEnabled || CardEnabled))
+{
+    <fieldset class="mt-4">
+        <legend class="form-label mb-2">روش پرداخت</legend>
+        <div class="pay-methods">
+            @if (OnlineEnabled)
+            {
+                <label class="pay-method">
+                    <input type="radio" name="@FieldName" value="online" checked="@(!IsCard)" />
+                    <span class="pm-icon"><i class="bi bi-lightning-charge"></i></span>
+                    <span><strong>درگاه پرداخت آنلاین</strong><small>تأیید فوری و دریافت کد رهگیری</small></span>
+                    <span class="pm-check" aria-hidden="true"></span>
+                </label>
+            }
+            @if (CardEnabled)
+            {
+                <label class="pay-method alt">
+                    <input type="radio" name="@FieldName" value="card" checked="@IsCard" />
+                    <span class="pm-icon"><i class="bi bi-credit-card-2-front"></i></span>
+                    <span><strong>کارت به کارت</strong><small>ارسال رسید؛ کد رهگیری پس از تأیید مدیر</small></span>
+                    <span class="pm-check" aria-hidden="true"></span>
+                </label>
+            }
+        </div>
+    </fieldset>
+}
+
+@code {
+    /// <summary>Form field name, e.g. "Input.PaymentMethod".</summary>
+    [Parameter] public string FieldName { get; set; } = "Input.PaymentMethod";
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public long Amount { get; set; }
+    private SiteSettings? settings;
+
+    private bool OnlineEnabled => settings?.PaymentEnabled == true;
+    private bool CardEnabled => settings is { CardToCardEnabled: true } s && !string.IsNullOrWhiteSpace(s.CardNumber);
+    private bool IsCard => CardEnabled && (string.Equals(Value, "card", StringComparison.OrdinalIgnoreCase) || !OnlineEnabled);
+
+    protected override async Task OnInitializedAsync() => settings = await SettingsService.GetAsync();
+}

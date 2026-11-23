@@ -18,6 +18,8 @@ public static class DependencyInjection
         services.AddScoped<CatalogService>();
         services.AddScoped<CheckoutService>();
         services.AddScoped<PaymentService>();
+        services.AddScoped<ReceiptService>();
+        services.AddScoped<Azma.Application.Support.TicketService>();
         services.AddScoped<ContactService>();
         services.AddScoped<DashboardService>();
         services.AddScoped<SalesAdminService>();

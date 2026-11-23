@@ -35,6 +35,7 @@ public static class DisplayNames
         OrderStatus.Paid => "پرداخت‌شده",
         OrderStatus.PaymentFailed => "پرداخت ناموفق",
         OrderStatus.Cancelled => "لغوشده",
+        OrderStatus.AwaitingApproval => "در انتظار تأیید رسید",
         _ => "نامشخص (نیاز به بررسی)",
     };
 
@@ -73,6 +74,7 @@ public static class DisplayNames
         OrderStatus.PendingPayment => "bg-warning text-dark",
         OrderStatus.PaymentUnknown => "bg-info text-dark",
         OrderStatus.Cancelled => "bg-secondary",
+        OrderStatus.AwaitingApproval => "bg-primary",
         _ => "bg-danger",
     };
 
@@ -83,5 +85,33 @@ public static class DisplayNames
         PaymentStatus.Unknown => "bg-info text-dark",
         PaymentStatus.Cancelled => "bg-secondary",
         _ => "bg-danger",
+    };
+
+    public static string Of(Azma.Domain.Sales.ReceiptStatus status) => status switch
+    {
+        Azma.Domain.Sales.ReceiptStatus.PendingReview => "در انتظار بررسی",
+        Azma.Domain.Sales.ReceiptStatus.Approved => "تأییدشده",
+        _ => "ردشده",
+    };
+
+    public static string BadgeClass(Azma.Domain.Sales.ReceiptStatus status) => status switch
+    {
+        Azma.Domain.Sales.ReceiptStatus.PendingReview => "bg-warning text-dark",
+        Azma.Domain.Sales.ReceiptStatus.Approved => "bg-success",
+        _ => "bg-danger",
+    };
+
+    public static string Of(Azma.Domain.Support.TicketStatus status) => status switch
+    {
+        Azma.Domain.Support.TicketStatus.Open => "در انتظار پاسخ",
+        Azma.Domain.Support.TicketStatus.Answered => "پاسخ داده شد",
+        _ => "بسته‌شده",
+    };
+
+    public static string BadgeClass(Azma.Domain.Support.TicketStatus status) => status switch
+    {
+        Azma.Domain.Support.TicketStatus.Open => "bg-warning text-dark",
+        Azma.Domain.Support.TicketStatus.Answered => "bg-success",
+        _ => "bg-secondary",
     };
 }
