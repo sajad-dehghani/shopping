@@ -17,3 +17,6 @@ appsettings.*.local.json
 *.local.json
 .env
 src/Azma.Web/keys/
+
+# One-off admin creation script (contains a temporary password)
+create-admin*.sql

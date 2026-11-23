@@ -20,6 +20,25 @@ using Microsoft.Extensions.Options;
 // Any exception that stops the app during startup is written to logs/startup-error.txt (see StartupLog).
 AppDomain.CurrentDomain.UnhandledException += (_, e) => StartupLog.Write("unhandled", e.ExceptionObject);
 
+// Offline helper (no database needed): dotnet Azma.Web.dll admin-sql <email> <password>
+// Prints a SQL script that creates or resets the admin account, for hosts without a command line.
+if (args.Length > 0 && args[0].Equals("admin-sql", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 3)
+    {
+        Console.Error.WriteLine("Usage: dotnet Azma.Web.dll admin-sql <email> <password>  > create-admin.sql");
+        return 1;
+    }
+    if (AdminSqlScript.Validate(args[1], args[2]) is { } invalid)
+    {
+        Console.Error.WriteLine(invalid);
+        return 1;
+    }
+    Console.OutputEncoding = System.Text.Encoding.UTF8;
+    Console.WriteLine(AdminSqlScript.Build(args[1], args[2]));
+    return 0;
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Persian culture for formatting; numbers are rendered with Persian digits by the Persian helper.
