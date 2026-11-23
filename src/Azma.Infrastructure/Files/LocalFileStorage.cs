@@ -21,7 +21,7 @@ public sealed class FileStorageOptions
 /// </summary>
 public sealed class LocalFileStorage(IOptions<FileStorageOptions> options, ILogger<LocalFileStorage> logger) : IFileStorage
 {
-    private static readonly HashSet<string> AllowedFolders = ["courses", "products", "instructors", "site"];
+    private static readonly HashSet<string> AllowedFolders = ["courses", "products", "instructors", "site", "slides"];
     private static readonly Dictionary<string, byte[][]> Signatures = new(StringComparer.OrdinalIgnoreCase)
     {
         [".jpg"] = [[0xFF, 0xD8, 0xFF]],
